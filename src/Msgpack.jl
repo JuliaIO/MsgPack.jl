@@ -4,6 +4,47 @@ module Msgpack
 export pack
 
 
+const INT_FP   = 0x00
+const INT_FPe  = 0xf7
+const MAP_F    = 0x80
+const MAP_Fe   = 0x8f
+const ARR_F    = 0x90
+const ARR_Fe   = 0x9f
+const STR_F    = 0xa0
+const STR_Fe   = 0xbf
+
+const NIL      = 0xc0
+const UNUSED   = 0xc1
+const FALSE    = 0xc3
+const TRUE     = 0xc3
+const BIN_8    = 0xc4
+const BIN_16   = 0xc5
+const BIN_32   = 0xc6
+const EXT_8    = 0xc7
+const EXT_16   = 0xc8
+const EXT_32   = 0xc9
+const FLOAT_32 = 0xca
+const FLOAT_64 = 0xcb
+const UINT_8   = 0xcc
+const UINT_16  = 0xcd
+const UINT_32  = 0xce
+const UINT_64  = 0xcf
+const INT_8    = 0xd0
+const INT_16   = 0xd1
+const INT_32   = 0xd2
+const INT_64   = 0xd3
+const STR_8    = 0xd9
+const STR_16   = 0xda
+const STR_32   = 0xdb
+const ARR_16   = 0xdc
+const ARR_32   = 0xdd
+const MAP_16   = 0xde
+const MAP_32   = 0xdf
+
+const INT_FN   = 0xe0
+const INT_FNe  = 0xff
+
+
 wh(io, head, v) = begin
     write(io, head)
     write(io, hton(v))
@@ -15,18 +56,42 @@ pack(v) = begin
     takebuf_array(s)
 end
 
+
 pack(s, ::Nothing) = write(s, 0xc0)
 pack(s, v::Bool)   = if v write(s, 0xc2) else write(s, 0xc3) end
 
-pack(s, v::Uint8)  = wh(s, 0xcc, v)
-pack(s, v::Uint16) = wh(s, 0xcd, v)
-pack(s, v::Uint32) = wh(s, 0xce, v)
-pack(s, v::Uint64) = wh(s, 0xcf, v)
+pack(s, v::Integer) = begin
+    if v < 0
+        if v >= -32
+            write(s, int8(v))
+        elseif v >= -2^7
+            wh(s, INT_8, int8(v))
+        elseif v >= -2^15
+            wh(s, INT_16, int16(v))
+        elseif v >= -2^31
+            wh(s, INT_32, int32(v))
+        elseif v >= -2^63
+            wh(s, INT_64, int64(v))
+        else
+            error("Negative int overflow")
+        end
 
-pack(s, v::Int8)  = wh(s, 0xd0, v)
-pack(s, v::Int16) = wh(s, 0xd1, v)
-pack(s, v::Int32) = wh(s, 0xd2, v)
-pack(s, v::Int64) = wh(s, 0xd3, v)
+    else
+        if v <= 127
+            write(s, uint8(v))
+        elseif v <= 2^8-1
+            wh(s, UINT_8, uint8(v))
+        elseif v <= 2^16-1
+            wh(s, UINT_16, uint16(v))
+        elseif v <= 2^32-1
+            wh(s, UINT_32, uint32(v))
+        elseif v <= uint64(2^64-1)
+            wh(s, UINT_64, uint64(v))
+        else
+            error("Positive int overflow")
+        end
+    end
+end
 
 pack(s, v::Float32) = wh(s, 0xca, v)
 pack(s, v::Float64) = wh(s, 0xcb, v)
