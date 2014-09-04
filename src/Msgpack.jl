@@ -185,8 +185,13 @@ pack(s, v::String) = begin
     n = sizeof(v)
     if n < 2^5
         write(s, STR_F | uint8(n))
-    elseif n < 2^8
-        wh(s, 0xd9, uint8(n))
+    ## Note: with this section commented out, we do not have 
+    ##       the most compact format for a string.  However, 
+    ##       the string is still in spec, and some other
+    ##       msgpack libaries (*ahem* Python) can't decode
+    ##       strings created with this rule.
+    #elseif n < 2^8
+    #    wh(s, 0xd9, uint8(n))
     elseif n < 2^16
         wh(s, 0xda, uint16(n))
     elseif n < 2^32
