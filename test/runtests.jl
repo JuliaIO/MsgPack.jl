@@ -1,4 +1,4 @@
-using Msgpack
+using MsgPack
 using Base.Test
 
 ck_pack(a, b) = pack(a) == b && unpack(b) == a
