@@ -1,4 +1,4 @@
-module Msgpack
+module MsgPack
 
 export pack, unpack
 
@@ -158,7 +158,7 @@ pack(s, v::Integer) = begin
         elseif v >= -2^63
             wh(s, INT_64, int64(v))
         else
-            error("Msgpack signed int overflow")
+            error("MsgPack signed int overflow")
         end
     else
         if v <= 127
@@ -172,7 +172,7 @@ pack(s, v::Integer) = begin
         elseif v <= uint64(2^64-1)
             wh(s, UINT_64, uint64(v))
         else
-            error("Msgpack unsigned int overflow")
+            error("MsgPack unsigned int overflow")
         end
     end
 end
@@ -197,7 +197,7 @@ pack(s, v::String) = begin
     elseif n < 2^32
         wh(s, 0xdb, uint32(n))
     else
-        error("Msgpack str overflow: ", n)
+        error("MsgPack str overflow: ", n)
     end
     write(s, v)
 end
@@ -212,7 +212,7 @@ pack(s, v::Vector{Uint8}) = begin
     elseif n < 2^32
         wh(s, 0xc6, uint32(n))
     else
-        error("Msgpack bin overflow: ", n)
+        error("MsgPack bin overflow: ", n)
     end
     write(s, v)
 end
@@ -227,7 +227,7 @@ pack(s, v::Vector) = begin
     elseif n < 2^32
         wh(s, 0xdd, uint32(n))
     else
-        error("Msgpack array overflow: ", n)
+        error("MsgPack array overflow: ", n)
     end
 
     for x in v
@@ -245,7 +245,7 @@ pack(s, v::Dict) = begin
     elseif n < 2^32
         wh(s, 0xdf, uint32(n))
     else
-        error("Msgpack map overflow: ", n)
+        error("MsgPack map overflow: ", n)
     end
 
     for (k, x) in v

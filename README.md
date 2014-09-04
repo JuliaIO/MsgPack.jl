@@ -1,17 +1,17 @@
-# Msgpack
+# MsgPack
 
 Provides basic support for the [msgpack](http://msgpack.org) format.
 
 ```
-julia> import Msgpack
+julia> import MsgPack
 
-julia> Msgpack.pack("hi")
+julia> MsgPack.pack("hi")
 3-element Array{Uint8,1}:
  0xa2
  0x68
  0x69
 
-julia> a = Msgpack.pack([1,2,"hi"])
+julia> a = MsgPack.pack([1,2,"hi"])
 6-element Array{Uint8,1}:
  0x93
  0x01
@@ -20,15 +20,15 @@ julia> a = Msgpack.pack([1,2,"hi"])
  0x68
  0x69
 
-julia> Msgpack.unpack(Msgpack.pack(4.5))
+julia> MsgPack.unpack(Msgpack.pack(4.5))
 4.5
 
 julia> f = open("in.mp")
-julia> Msgpack.unpack(f)
+julia> MsgPack.unpack(f)
 "hello"
 
 julia> f2 = open("out.mp", "w")
-julia> Msgpack.pack(f2, [1,2,"hi"])
+julia> MsgPack.pack(f2, [1,2,"hi"])
 
 
 
