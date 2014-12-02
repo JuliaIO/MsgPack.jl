@@ -9,7 +9,7 @@ const STR_F    = 0xa0 # - 0xbf
 
 const NIL      = 0xc0
 const UNUSED   = 0xc1
-const FALSE    = 0xc3
+const FALSE    = 0xc2
 const TRUE     = 0xc3
 const BIN_8    = 0xc4
 const BIN_16   = 0xc5
@@ -142,8 +142,8 @@ pack(v) = begin
 end
 
 
-pack(s, ::Nothing) = write(s, 0xc0)
-pack(s, v::Bool)   = if v write(s, 0xc2) else write(s, 0xc3) end
+pack(s, ::Nothing) = write(s, NIL)
+pack(s, v::Bool)   = if v write(s, TRUE) else write(s, FALSE) end
 
 pack(s, v::Integer) = begin
     if v < 0
