@@ -6,6 +6,7 @@ const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
 const ARR_F    = 0x90 # - 0x9f
 const STR_F    = 0xa0 # - 0xbf
+const EXT_F    = 0xd4 # - 0xd8
 
 const NIL      = 0xc0
 const UNUSED   = 0xc1
@@ -58,9 +59,9 @@ const DISPATCH =
      ,BIN_8    => s -> unpack_bin(s, readn(s, Uint8))
      ,BIN_16   => s -> unpack_bin(s, readn(s, Uint16))
      ,BIN_32   => s -> unpack_bin(s, readn(s, Uint32))
-     ,EXT_8    => s -> nothing
-     ,EXT_16   => s -> nothing
-     ,EXT_32   => s -> nothing
+     ,EXT_8    => s -> unpack_ext(s, readn(s, Uint8))
+     ,EXT_16   => s -> unpack_ext(s, readn(s, Uint16))
+     ,EXT_32   => s -> unpack_ext(s, readn(s, Uint32))
      ,FLOAT_32 => s -> readn(s, Float32)
      ,FLOAT_64 => s -> readn(s, Float64)
      ,UINT_8   => s -> readi(s, Uint8)
@@ -100,6 +101,10 @@ unpack(s::IO) = begin
         # fixstr
         unpack_str(s, b $ STR_F)
 
+    elseif 0xd4 <= b <= 0xd8
+        # fixext
+        unpack_ext(s, 2^(b - EXT_F))
+
     elseif b <= 0xdf
         DISPATCH[b](s)
 
@@ -128,6 +133,7 @@ unpack_arr(s, n) = begin
 end
 
 unpack_str(s, n) = utf8(readbytes(s, n))
+unpack_ext(s, n) = (read(s, Int8), readbytes(s, n))
 unpack_bin(s, n) = readbytes(s, n)
 
 wh(io, head, v) = begin
@@ -200,6 +206,33 @@ pack(s, v::String) = begin
         error("MsgPack str overflow: ", n)
     end
     write(s, v)
+end
+
+# ext format
+pack(s, v::(Integer, Vector{Uint8})) = begin
+    -128 <= v[1] <= 127 || error("MsgPack Ext typecode must fit in type Int8")
+    n = sizeof(v[2])
+    if n == 1
+        write(s, 0xd4)
+    elseif n == 2
+        write(s, 0xd5)
+    elseif n == 4
+        write(s, 0xd6)
+    elseif n == 8
+        write(s, 0xd7)
+    elseif n == 16
+        write(s, 0xd8)
+    elseif n < 2^8
+        wh(s, 0xc7, uint8(n))
+    elseif n < 2^16
+        wh(s, 0xc8, uint16(n))
+    elseif n < 2^32
+        wh(s, 0xc9, uint32(n))
+    else
+        error("MsgPack ext overflow: ", n)
+    end
+    write(s, int8(v[1]))
+    write(s, v[2])
 end
 
 # bin format
