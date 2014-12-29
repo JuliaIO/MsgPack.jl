@@ -1,6 +1,6 @@
 module MsgPack
 
-export pack, unpack
+export pack, unpack, Ext
 
 const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
@@ -37,6 +37,23 @@ const MAP_16   = 0xde
 const MAP_32   = 0xdf
 
 const INT_FN   = 0xe0 # - 0xff
+
+immutable Ext
+    typecode::Int8
+    data::Vector{Uint8}
+
+    function Ext(t::Integer, d::Vector{Uint8}; apptype=true)
+        # -128 to -1 reserved for implementation
+        if -128 <= t <= -1
+            apptype && error("MsgPack Ext typecode -128 through -1 reserved by implementation")
+        elseif !(0 <= t <= 127)
+            error("MsgPack Ext typecode must be in the range [-128, 127]")
+        end
+
+        new(t, d)
+    end
+end
+==(a::Ext, b::Ext) = a.typecode == b.typecode && a.data == b.data
 
 
 readn(s, t) = ntoh(read(s, t))
@@ -133,7 +150,7 @@ unpack_arr(s, n) = begin
 end
 
 unpack_str(s, n) = utf8(readbytes(s, n))
-unpack_ext(s, n) = (read(s, Int8), readbytes(s, n))
+unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), apptype=false)
 unpack_bin(s, n) = readbytes(s, n)
 
 wh(io, head, v) = begin
@@ -209,9 +226,8 @@ pack(s, v::String) = begin
 end
 
 # ext format
-pack(s, v::(Integer, Vector{Uint8})) = begin
-    -128 <= v[1] <= 127 || error("MsgPack Ext typecode must fit in type Int8")
-    n = sizeof(v[2])
+pack(s, v::Ext) = begin
+    n = sizeof(v.data)
     if n == 1
         write(s, 0xd4)
     elseif n == 2
@@ -231,8 +247,8 @@ pack(s, v::(Integer, Vector{Uint8})) = begin
     else
         error("MsgPack ext overflow: ", n)
     end
-    write(s, int8(v[1]))
-    write(s, v[2])
+    write(s, v.typecode)
+    write(s, v.data)
 end
 
 # bin format
