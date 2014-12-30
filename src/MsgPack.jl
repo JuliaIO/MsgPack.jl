@@ -55,6 +55,16 @@ immutable Ext
 end
 ==(a::Ext, b::Ext) = a.typecode == b.typecode && a.data == b.data
 
+# return Ext where Ext.data is a serialized object
+function extserialize(t::Integer, d)
+    i = IOBuffer()
+    serialize(i, d)
+    return Ext(t, takebuf_array(i))
+end
+
+# return (typecode, object) from an Ext where Ext.data is a serialized object
+extdeserialize(e::Ext) = (e.typecode, deserialize(IOBuffer(e.data)))
+
 
 readn(s, t) = ntoh(read(s, t))
 readi(s, t) = int64(readn(s, t))
