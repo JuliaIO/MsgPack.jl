@@ -105,7 +105,7 @@ unpack(s::IO) = begin
 
     else
         # negative fixint
-        int64(int8(b))
+        int64(reinterpret(Int8, b))
     end
 end
 
@@ -169,7 +169,7 @@ pack(s, v::Integer) = begin
             wh(s, UINT_16, uint16(v))
         elseif v <= 2^32-1
             wh(s, UINT_32, uint32(v))
-        elseif v <= uint64(2^64-1)
+        elseif v <= uint64(2)^64-1
             wh(s, UINT_64, uint64(v))
         else
             error("MsgPack unsigned int overflow")
