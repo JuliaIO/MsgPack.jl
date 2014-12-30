@@ -42,10 +42,10 @@ immutable Ext
     typecode::Int8
     data::Vector{Uint8}
 
-    function Ext(t::Integer, d::Vector{Uint8}; apptype=true)
+    function Ext(t::Integer, d::Vector{Uint8}; impltype=false)
         # -128 to -1 reserved for implementation
         if -128 <= t <= -1
-            apptype && error("MsgPack Ext typecode -128 through -1 reserved by implementation")
+            impltype || error("MsgPack Ext typecode -128 through -1 reserved by implementation")
         elseif !(0 <= t <= 127)
             error("MsgPack Ext typecode must be in the range [-128, 127]")
         end
@@ -150,7 +150,7 @@ unpack_arr(s, n) = begin
 end
 
 unpack_str(s, n) = utf8(readbytes(s, n))
-unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), apptype=false)
+unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), impltype=true)
 unpack_bin(s, n) = readbytes(s, n)
 
 wh(io, head, v) = begin
