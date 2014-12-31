@@ -84,7 +84,7 @@ julia> p = pack(b)
 julia> c = unpack(p)
 MsgPack.Ext(22,UInt8[0x34,0xff,0x76,0x22,0xd3,0xab])
 
-julia> c == cust
+julia> c == b
 true
 ```
 
