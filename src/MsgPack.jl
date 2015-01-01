@@ -1,11 +1,12 @@
 module MsgPack
 
-export pack, unpack
+export pack, unpack, Ext
 
 const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
 const ARR_F    = 0x90 # - 0x9f
 const STR_F    = 0xa0 # - 0xbf
+const EXT_F    = 0xd4 # - 0xd8
 
 const NIL      = 0xc0
 const UNUSED   = 0xc1
@@ -37,6 +38,33 @@ const MAP_32   = 0xdf
 
 const INT_FN   = 0xe0 # - 0xff
 
+immutable Ext
+    typecode::Int8
+    data::Vector{Uint8}
+
+    function Ext(t::Integer, d::Vector{Uint8}; impltype=false)
+        # -128 to -1 reserved for implementation
+        if -128 <= t <= -1
+            impltype || error("MsgPack Ext typecode -128 through -1 reserved by implementation")
+        elseif !(0 <= t <= 127)
+            error("MsgPack Ext typecode must be in the range [-128, 127]")
+        end
+
+        new(t, d)
+    end
+end
+==(a::Ext, b::Ext) = a.typecode == b.typecode && a.data == b.data
+
+# return Ext where Ext.data is a serialized object
+function extserialize(t::Integer, d)
+    i = IOBuffer()
+    serialize(i, d)
+    return Ext(t, takebuf_array(i))
+end
+
+# return (typecode, object) from an Ext where Ext.data is a serialized object
+extdeserialize(e::Ext) = (e.typecode, deserialize(IOBuffer(e.data)))
+
 
 readn(s, t) = ntoh(read(s, t))
 readi(s, t) = int64(readn(s, t))
@@ -58,9 +86,9 @@ const DISPATCH =
      ,BIN_8    => s -> unpack_bin(s, readn(s, Uint8))
      ,BIN_16   => s -> unpack_bin(s, readn(s, Uint16))
      ,BIN_32   => s -> unpack_bin(s, readn(s, Uint32))
-     ,EXT_8    => s -> nothing
-     ,EXT_16   => s -> nothing
-     ,EXT_32   => s -> nothing
+     ,EXT_8    => s -> unpack_ext(s, readn(s, Uint8))
+     ,EXT_16   => s -> unpack_ext(s, readn(s, Uint16))
+     ,EXT_32   => s -> unpack_ext(s, readn(s, Uint32))
      ,FLOAT_32 => s -> readn(s, Float32)
      ,FLOAT_64 => s -> readn(s, Float64)
      ,UINT_8   => s -> readi(s, Uint8)
@@ -100,6 +128,10 @@ unpack(s::IO) = begin
         # fixstr
         unpack_str(s, b $ STR_F)
 
+    elseif 0xd4 <= b <= 0xd8
+        # fixext
+        unpack_ext(s, 2^(b - EXT_F))
+
     elseif b <= 0xdf
         DISPATCH[b](s)
 
@@ -128,6 +160,7 @@ unpack_arr(s, n) = begin
 end
 
 unpack_str(s, n) = utf8(readbytes(s, n))
+unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), impltype=true)
 unpack_bin(s, n) = readbytes(s, n)
 
 wh(io, head, v) = begin
@@ -200,6 +233,32 @@ pack(s, v::String) = begin
         error("MsgPack str overflow: ", n)
     end
     write(s, v)
+end
+
+# ext format
+pack(s, v::Ext) = begin
+    n = sizeof(v.data)
+    if n == 1
+        write(s, 0xd4)
+    elseif n == 2
+        write(s, 0xd5)
+    elseif n == 4
+        write(s, 0xd6)
+    elseif n == 8
+        write(s, 0xd7)
+    elseif n == 16
+        write(s, 0xd8)
+    elseif n < 2^8
+        wh(s, 0xc7, uint8(n))
+    elseif n < 2^16
+        wh(s, 0xc8, uint16(n))
+    elseif n < 2^32
+        wh(s, 0xc9, uint32(n))
+    else
+        error("MsgPack ext overflow: ", n)
+    end
+    write(s, v.typecode)
+    write(s, v.data)
 end
 
 # bin format
