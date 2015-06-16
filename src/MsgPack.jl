@@ -277,7 +277,7 @@ pack(s, v::Vector{Uint8}) = begin
 end
 
 # Simple arrays
-pack(s, v::Vector) = begin
+pack(s, v::Union(Vector, Tuple)) = begin
     n = length(v)
     if n < 2^4
         write(s, ARR_F | uint8(n))
