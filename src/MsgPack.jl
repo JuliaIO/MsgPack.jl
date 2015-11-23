@@ -1,6 +1,7 @@
 module MsgPack
 
 export pack, unpack, Ext
+import Base: == 
 
 const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
@@ -40,9 +41,9 @@ const INT_FN   = 0xe0 # - 0xff
 
 immutable Ext
     typecode::Int8
-    data::Vector{Uint8}
+    data::Vector{UInt8}
 
-    function Ext(t::Integer, d::Vector{Uint8}; impltype=false)
+    function Ext(t::Integer, d::Vector{UInt8}; impltype=false)
         # -128 to -1 reserved for implementation
         if -128 <= t <= -1
             impltype || error("MsgPack Ext typecode -128 through -1 reserved by implementation")
@@ -70,7 +71,7 @@ readn(s, t) = ntoh(read(s, t))
 readi(s, t) = int64(readn(s, t))
 
 readu64(s, t) = begin
-    v = uint64(readn(s, t))
+    v = UInt64(readn(s, t))
     if v > 2^63-1
         v
     else
@@ -79,38 +80,38 @@ readu64(s, t) = begin
 end
 
 const DISPATCH =
-    [ NIL      => s -> nothing
+    Dict( NIL      => s -> nothing
      ,UNUSED   => s -> error("unused")
      ,FALSE    => s -> false
      ,TRUE     => s -> true
-     ,BIN_8    => s -> unpack_bin(s, readn(s, Uint8))
-     ,BIN_16   => s -> unpack_bin(s, readn(s, Uint16))
-     ,BIN_32   => s -> unpack_bin(s, readn(s, Uint32))
-     ,EXT_8    => s -> unpack_ext(s, readn(s, Uint8))
-     ,EXT_16   => s -> unpack_ext(s, readn(s, Uint16))
-     ,EXT_32   => s -> unpack_ext(s, readn(s, Uint32))
+     ,BIN_8    => s -> unpack_bin(s, readn(s, UInt8))
+     ,BIN_16   => s -> unpack_bin(s, readn(s, UInt16))
+     ,BIN_32   => s -> unpack_bin(s, readn(s, UInt32))
+     ,EXT_8    => s -> unpack_ext(s, readn(s, UInt8))
+     ,EXT_16   => s -> unpack_ext(s, readn(s, UInt16))
+     ,EXT_32   => s -> unpack_ext(s, readn(s, UInt32))
      ,FLOAT_32 => s -> readn(s, Float32)
      ,FLOAT_64 => s -> readn(s, Float64)
-     ,UINT_8   => s -> readi(s, Uint8)
-     ,UINT_16  => s -> readi(s, Uint16)
-     ,UINT_32  => s -> readi(s, Uint32)
-     ,UINT_64  => s -> readu64(s, Uint64)
+     ,UINT_8   => s -> readi(s, UInt8)
+     ,UINT_16  => s -> readi(s, UInt16)
+     ,UINT_32  => s -> readi(s, UInt32)
+     ,UINT_64  => s -> readu64(s, UInt64)
      ,INT_8    => s -> readi(s, Int8)
      ,INT_16   => s -> readi(s, Int16)
      ,INT_32   => s -> readi(s, Int32)
      ,INT_64   => s -> readi(s, Int64)
-     ,STR_8    => s -> unpack_str(s, readn(s, Uint8))
-     ,STR_16   => s -> unpack_str(s, readn(s, Uint16))
-     ,STR_32   => s -> unpack_str(s, readn(s, Uint32))
-     ,ARR_16   => s -> unpack_arr(s, readn(s, Uint16))
-     ,ARR_32   => s -> unpack_arr(s, readn(s, Uint32))
-     ,MAP_16   => s -> unpack_map(s, readn(s, Uint16))
-     ,MAP_32   => s -> unpack_map(s, readn(s, Uint32))
-]
+     ,STR_8    => s -> unpack_str(s, readn(s, UInt8))
+     ,STR_16   => s -> unpack_str(s, readn(s, UInt16))
+     ,STR_32   => s -> unpack_str(s, readn(s, UInt32))
+     ,ARR_16   => s -> unpack_arr(s, readn(s, UInt16))
+     ,ARR_32   => s -> unpack_arr(s, readn(s, UInt32))
+     ,MAP_16   => s -> unpack_map(s, readn(s, UInt16))
+     ,MAP_32   => s -> unpack_map(s, readn(s, UInt32))
+)
 
 unpack(s) = unpack(IOBuffer(s))
 unpack(s::IO) = begin
-    b = read(s, Uint8)
+    b = read(s, UInt8)
 
     if b <= 0x7f
         # positive fixint
@@ -175,7 +176,7 @@ pack(v) = begin
 end
 
 
-pack(s, ::Nothing) = write(s, NIL)
+pack(s, ::Void) = write(s, NIL)
 pack(s, v::Bool)   = if v write(s, TRUE) else write(s, FALSE) end
 
 pack(s, v::Integer) = begin
@@ -195,15 +196,15 @@ pack(s, v::Integer) = begin
         end
     else
         if v <= 127
-            write(s, uint8(v))
+            write(s, UInt8(v))
         elseif v <= 2^8-1
-            wh(s, UINT_8, uint8(v))
+            wh(s, UINT_8, UInt8(v))
         elseif v <= 2^16-1
-            wh(s, UINT_16, uint16(v))
+            wh(s, UINT_16, UInt16(v))
         elseif v <= 2^32-1
-            wh(s, UINT_32, uint32(v))
-        elseif v <= uint64(2)^64-1
-            wh(s, UINT_64, uint64(v))
+            wh(s, UINT_32, UInt32(v))
+        elseif v <= UInt64(2)^64-1
+            wh(s, UINT_64, UInt64(v))
         else
             error("MsgPack unsigned int overflow")
         end
@@ -214,21 +215,21 @@ pack(s, v::Float32) = wh(s, 0xca, v)
 pack(s, v::Float64) = wh(s, 0xcb, v)
 
 # str format
-pack(s, v::String) = begin
+pack(s, v::AbstractString) = begin
     n = sizeof(v)
     if n < 2^5
-        write(s, STR_F | uint8(n))
+        write(s, STR_F | UInt8(n))
     ## Note: with this section commented out, we do not have 
     ##       the most compact format for a string.  However, 
     ##       the string is still in spec, and some other
     ##       msgpack libaries (*ahem* Python) can't decode
     ##       strings created with this rule.
     #elseif n < 2^8
-    #    wh(s, 0xd9, uint8(n))
+    #    wh(s, 0xd9, UInt8(n))
     elseif n < 2^16
-        wh(s, 0xda, uint16(n))
+        wh(s, 0xda, UInt16(n))
     elseif n < 2^32
-        wh(s, 0xdb, uint32(n))
+        wh(s, 0xdb, UInt32(n))
     else
         error("MsgPack str overflow: ", n)
     end
@@ -249,11 +250,11 @@ pack(s, v::Ext) = begin
     elseif n == 16
         write(s, 0xd8)
     elseif n < 2^8
-        wh(s, 0xc7, uint8(n))
+        wh(s, 0xc7, UInt8(n))
     elseif n < 2^16
-        wh(s, 0xc8, uint16(n))
+        wh(s, 0xc8, UInt16(n))
     elseif n < 2^32
-        wh(s, 0xc9, uint32(n))
+        wh(s, 0xc9, UInt32(n))
     else
         error("MsgPack ext overflow: ", n)
     end
@@ -262,14 +263,14 @@ pack(s, v::Ext) = begin
 end
 
 # bin format
-pack(s, v::Vector{Uint8}) = begin
+pack(s, v::Vector{UInt8}) = begin
     n = length(v)
     if n < 2^8
-        wh(s, 0xc4, uint8(n))
+        wh(s, 0xc4, UInt8(n))
     elseif n < 2^16
-        wh(s, 0xc5, uint16(n))
+        wh(s, 0xc5, UInt16(n))
     elseif n < 2^32
-        wh(s, 0xc6, uint32(n))
+        wh(s, 0xc6, UInt32(n))
     else
         error("MsgPack bin overflow: ", n)
     end
@@ -277,14 +278,14 @@ pack(s, v::Vector{Uint8}) = begin
 end
 
 # Simple arrays
-pack(s, v::Union(Vector, Tuple)) = begin
+pack(s, v::Union{Vector, Tuple}) = begin
     n = length(v)
     if n < 2^4
-        write(s, ARR_F | uint8(n))
+        write(s, ARR_F | UInt8(n))
     elseif n < 2^16
-        wh(s, 0xdc, uint16(n))
+        wh(s, 0xdc, UInt16(n))
     elseif n < 2^32
-        wh(s, 0xdd, uint32(n))
+        wh(s, 0xdd, UInt32(n))
     else
         error("MsgPack array overflow: ", n)
     end
@@ -298,11 +299,11 @@ end
 pack(s, v::Dict) = begin
     n = length(v)
     if n < 2^4
-        write(s, MAP_F | uint8(n))
+        write(s, MAP_F | UInt8(n))
     elseif n < 2^16
-        wh(s, 0xde, uint16(n))
+        wh(s, 0xde, UInt16(n))
     elseif n < 2^32
-        wh(s, 0xdf, uint32(n))
+        wh(s, 0xdf, UInt32(n))
     else
         error("MsgPack map overflow: ", n)
     end
