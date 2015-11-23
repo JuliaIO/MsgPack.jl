@@ -68,14 +68,14 @@ extdeserialize(e::Ext) = (e.typecode, deserialize(IOBuffer(e.data)))
 
 
 readn(s, t) = ntoh(read(s, t))
-readi(s, t) = int64(readn(s, t))
+readi(s, t) = Int64(readn(s, t))
 
 readu64(s, t) = begin
     v = UInt64(readn(s, t))
     if v > 2^63-1
         v
     else
-        int64(v)
+        Int64(v)
     end
 end
 
@@ -115,7 +115,7 @@ unpack(s::IO) = begin
 
     if b <= 0x7f
         # positive fixint
-        int64(b)
+        Int64(b)
 
     elseif b <= 0x8f
         # fixmap
@@ -138,7 +138,7 @@ unpack(s::IO) = begin
 
     else
         # negative fixint
-        int64(reinterpret(Int8, b))
+        Int64(reinterpret(Int8, b))
     end
 end
 
@@ -182,15 +182,15 @@ pack(s, v::Bool)   = if v write(s, TRUE) else write(s, FALSE) end
 pack(s, v::Integer) = begin
     if v < 0
         if v >= -32
-            write(s, int8(v))
+            write(s, Int8(v))
         elseif v >= -2^7
             wh(s, INT_8, int8(v))
         elseif v >= -2^15
-            wh(s, INT_16, int16(v))
+            wh(s, INT_16, Int16(v))
         elseif v >= -2^31
-            wh(s, INT_32, int32(v))
+            wh(s, INT_32, Int32(v))
         elseif v >= -2^63
-            wh(s, INT_64, int64(v))
+            wh(s, INT_64, Int64(v))
         else
             error("MsgPack signed int overflow")
         end
