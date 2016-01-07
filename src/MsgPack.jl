@@ -1,7 +1,7 @@
 module MsgPack
 
 if VERSION < v"0.4"
-    using compat
+    using Compat
 end
 
 export pack, unpack, Ext
