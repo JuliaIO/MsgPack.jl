@@ -2,7 +2,7 @@ using MsgPack
 using Base.Test
 
 if VERSION < v"0.4"
-    using compat
+    using Compat
 end
 
 ck_pack(a, b) = pack(a) == b && unpack(b) == a
