@@ -1,5 +1,9 @@
 module MsgPack
 
+if VERSION < v"0.4"
+    using compat
+end
+
 export pack, unpack, Ext
 import Base: ==
 

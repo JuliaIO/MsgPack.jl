@@ -1,6 +1,10 @@
 using MsgPack
 using Base.Test
 
+if VERSION < v"0.4"
+    using compat
+end
+
 ck_pack(a, b) = pack(a) == b && unpack(b) == a
 
 # nil
@@ -85,7 +89,7 @@ b = []
               [0x92, 0xa2, 0x68, 0x69, 0x92, 0xca, 0x40, 0x00, 0x00, 0x00, 0xcc, 0xff]
 
 # fixmap
-@test @compat ck_pack(Dict(1=>2, "hi"=>"mom"),
+@test ck_pack(@compat Dict(1=>2, "hi"=>"mom"),
               [0x82,0xa2,0x68,0x69,0xa3,0x6d,0x6f,0x6d,0x01,0x02])
 
 # fixext 1
