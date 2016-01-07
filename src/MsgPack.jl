@@ -1,7 +1,7 @@
 module MsgPack
 
 export pack, unpack, Ext
-import Base: == 
+import Base: ==
 
 const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
@@ -184,7 +184,7 @@ pack(s, v::Integer) = begin
         if v >= -32
             write(s, Int8(v))
         elseif v >= -2^7
-            wh(s, INT_8, int8(v))
+            wh(s, INT_8, Int8(v))
         elseif v >= -2^15
             wh(s, INT_16, Int16(v))
         elseif v >= -2^31
@@ -219,8 +219,8 @@ pack(s, v::AbstractString) = begin
     n = sizeof(v)
     if n < 2^5
         write(s, STR_F | UInt8(n))
-    ## Note: with this section commented out, we do not have 
-    ##       the most compact format for a string.  However, 
+    ## Note: with this section commented out, we do not have
+    ##       the most compact format for a string.  However,
     ##       the string is still in spec, and some other
     ##       msgpack libaries (*ahem* Python) can't decode
     ##       strings created with this rule.
