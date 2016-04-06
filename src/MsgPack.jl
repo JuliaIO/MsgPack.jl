@@ -112,7 +112,10 @@ const DISPATCH =
                 )
 
 unpack(s) = unpack(IOBuffer(s))
-unpack(s::IO) = begin
+unpack(s, ext_hook) = unpack(IOBuffer(s), ext_hook)
+
+function unpack(s::IO; ext_hook=nothing)
+
     b = read(s, UInt8)
 
     if b <= 0x7f
@@ -133,7 +136,12 @@ unpack(s::IO) = begin
 
     elseif 0xd4 <= b <= 0xd8
         # fixext
-        unpack_ext(s, 2^(b - EXT_F))
+        raw_ext = unpack_ext(s, 2^(b - EXT_F))
+        if (ext_hook != nothing)
+            ext_hook(raw_ext)
+        else
+            raw_ext
+        end
 
     elseif b <= 0xdf
         DISPATCH[b](s)
