@@ -81,35 +81,67 @@ readu64(s, t) = begin
     end
 end
 
-const DISPATCH =
-    @compat Dict( NIL      => s -> nothing
-                 ,UNUSED   => s -> error("unused")
-                 ,FALSE    => s -> false
-                 ,TRUE     => s -> true
-                 ,BIN_8    => s -> unpack_bin(s, readn(s, UInt8))
-                 ,BIN_16   => s -> unpack_bin(s, readn(s, UInt16))
-                 ,BIN_32   => s -> unpack_bin(s, readn(s, UInt32))
-                 ,EXT_8    => s -> unpack_ext(s, readn(s, UInt8))
-                 ,EXT_16   => s -> unpack_ext(s, readn(s, UInt16))
-                 ,EXT_32   => s -> unpack_ext(s, readn(s, UInt32))
-                 ,FLOAT_32 => s -> readn(s, Float32)
-                 ,FLOAT_64 => s -> readn(s, Float64)
-                 ,UINT_8   => s -> readi(s, UInt8)
-                 ,UINT_16  => s -> readi(s, UInt16)
-                 ,UINT_32  => s -> readi(s, UInt32)
-                 ,UINT_64  => s -> readu64(s, UInt64)
-                 ,INT_8    => s -> readi(s, Int8)
-                 ,INT_16   => s -> readi(s, Int16)
-                 ,INT_32   => s -> readi(s, Int32)
-                 ,INT_64   => s -> readi(s, Int64)
-                 ,STR_8    => s -> unpack_str(s, readn(s, UInt8))
-                 ,STR_16   => s -> unpack_str(s, readn(s, UInt16))
-                 ,STR_32   => s -> unpack_str(s, readn(s, UInt32))
-                 ,ARR_16   => s -> unpack_arr(s, readn(s, UInt16))
-                 ,ARR_32   => s -> unpack_arr(s, readn(s, UInt32))
-                 ,MAP_16   => s -> unpack_map(s, readn(s, UInt16))
-                 ,MAP_32   => s -> unpack_map(s, readn(s, UInt32))
-                )
+
+function dispatch_fb(t::UInt8; ext_hook=nothing)
+    if t == NIL
+        s -> nothing
+    elseif t == UNUSED
+        error("unused")
+    elseif t == FALSE
+        s -> false  
+    elseif t == TRUE
+        s -> true  
+    elseif t == BIN_8
+        s -> unpack_bin(s, readn(s, UInt8))   
+    elseif t == BIN_16
+        s -> unpack_bin(s, readn(s, UInt16)) 
+    elseif t == BIN_32
+        s -> unpack_bin(s, readn(s, UInt32))   
+    elseif t == EXT_8
+        s -> unpack_ext(s, readn(s, UInt8), ext_hook=ext_hook) 
+    elseif t == EXT_16
+        s -> unpack_ext(s, readn(s, UInt16), ext_hook=ext_hook)
+    elseif t == EXT_32
+        s -> unpack_ext(s, readn(s, UInt32), ext_hook=ext_hook)
+    elseif t == FLOAT_32
+        s -> readn(s, Float32) 
+    elseif t == FLOAT_64
+        s -> readn(s, Float64)  
+    elseif t == UINT_8
+        s -> readi(s, UInt8)  
+    elseif t == UINT_16 
+        s -> readi(s, UInt16)  
+    elseif t == UINT_32 
+        s -> readi(s, UInt32)  
+    elseif t == UINT_64 
+        s -> readu64(s, UInt64) 
+    elseif t == INT_8
+        s -> readi(s, Int8)  
+    elseif t == INT_16  
+        s -> readi(s, Int16)  
+    elseif t == INT_32 
+        s -> readi(s, Int32)  
+    elseif t == INT_64  
+        s -> readi(s, Int64) 
+    elseif t == STR_8
+        s -> unpack_str(s, readn(s, UInt8))    
+    elseif t == STR_16
+        s -> unpack_str(s, readn(s, UInt16)) 
+    elseif t == STR_32
+        s -> unpack_str(s, readn(s, UInt32))  
+    elseif t == ARR_16
+        s -> unpack_arr(s, readn(s, UInt16), ext_hook=ext_hook) 
+    elseif t == ARR_32
+        s -> unpack_arr(s, readn(s, UInt32), ext_hook=ext_hook)   
+    elseif t == MAP_16
+        s -> unpack_map(s, readn(s, UInt16), ext_hook=ext_hook)  
+    elseif t == MAP_32
+        s -> unpack_map(s, readn(s, UInt32), ext_hook=ext_hook) 
+    else
+        error("Wrong first byte $t")
+    end
+end
+
 
 unpack(s; ext_hook=nothing) = unpack(IOBuffer(s), ext_hook=ext_hook)
 
@@ -123,11 +155,11 @@ function unpack(s::IO; ext_hook=nothing)
 
     elseif b <= 0x8f
         # fixmap
-        unpack_map(s, b $ MAP_F)
+        unpack_map(s, b $ MAP_F, ext_hook=ext_hook)
 
     elseif b <= 0x9f
         # fixarray
-        unpack_arr(s, b $ ARR_F)
+        unpack_arr(s, b $ ARR_F, ext_hook=ext_hook)
 
     elseif b <= 0xbf
         # fixstr
@@ -135,15 +167,10 @@ function unpack(s::IO; ext_hook=nothing)
 
     elseif 0xd4 <= b <= 0xd8
         # fixext
-        raw_ext = unpack_ext(s, 2^(b - EXT_F))
-        if (ext_hook != nothing)
-            ext_hook(raw_ext)
-        else
-            raw_ext
-        end
+        unpack_ext(s, 2^(b - EXT_F), ext_hook=ext_hook)
 
     elseif b <= 0xdf
-        DISPATCH[b](s)
+        dispatch_fb(b, ext_hook=ext_hook)(s)
 
     else
         # negative fixint
@@ -151,26 +178,35 @@ function unpack(s::IO; ext_hook=nothing)
     end
 end
 
-unpack_map(s, n) = begin
+unpack_map(s, n; ext_hook=nothing) = begin
     out = Dict()
     for i in 1:n
-        k = unpack(s)
-        v = unpack(s)
+        k = unpack(s, ext_hook=ext_hook)
+        v = unpack(s, ext_hook=ext_hook)
         out[k] = v
     end
     out
 end
 
-unpack_arr(s, n) = begin
+unpack_arr(s, n; ext_hook=nothing) = begin
     out = Array(Any, n)
     for i in 1:n
-        out[i] = unpack(s)
+        out[i] = unpack(s, ext_hook=ext_hook)
     end
     out
 end
 
 unpack_str(s, n) = utf8(readbytes(s, n))
-unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), impltype=true)
+
+function unpack_ext(s, n; ext_hook=nothing)
+    raw_ext = Ext(read(s, Int8), readbytes(s, n), impltype=true)
+    if ext_hook == nothing
+        raw_ext
+    else
+        ext_hook(raw_ext)
+    end
+end
+ 
 unpack_bin(s, n) = readbytes(s, n)
 
 wh(io, head, v) = begin
