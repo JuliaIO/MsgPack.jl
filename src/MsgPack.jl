@@ -111,8 +111,7 @@ const DISPATCH =
                  ,MAP_32   => s -> unpack_map(s, readn(s, UInt32))
                 )
 
-unpack(s) = unpack(IOBuffer(s))
-unpack(s, ext_hook) = unpack(IOBuffer(s), ext_hook)
+unpack(s; ext_hook=nothing) = unpack(IOBuffer(s), ext_hook=ext_hook)
 
 function unpack(s::IO; ext_hook=nothing)
 
