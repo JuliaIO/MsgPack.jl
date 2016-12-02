@@ -1,11 +1,20 @@
 # MsgPack
 
-[![Build Status](https://travis-ci.org/kmsquire/MsgPack.jl.svg?branch=master)](https://travis-ci.org/kmsquire/MsgPack.jl)
+[![Build Status](https://travis-ci.org/colinfang/MsgPack.jl.svg?branch=master)](https://travis-ci.org/colinfang/MsgPack.jl)
 
-Provides basic support for the [msgpack](http://msgpack.org) format.
+## Overview
 
-```
-julia> import MsgPack
+This package provides basic support for the [msgpack](http://msgpack.org) format.
+
+This fork adds
+
+    - Custom encoding via the extension type.
+    - Better unpacked types for array and dict.
+
+## Usage
+
+```julia
+julia> using MsgPack
 
 julia> MsgPack.pack("hi")
 3-element Array{Uint8,1}:
@@ -13,35 +22,34 @@ julia> MsgPack.pack("hi")
  0x68
  0x69
 
-julia> a = MsgPack.pack([1,2,"hi"])
-6-element Array{Uint8,1}:
- 0x93
- 0x01
- 0x02
- 0xa2
- 0x68
- 0x69
+julia> MsgPack.unpack(MsgPack.pack((1, 2)))
+2-element Array{Int64,1}:
+ 1
+ 2
 
-julia> MsgPack.unpack(MsgPack.pack(4.5))
-4.5
+julia> MsgPack.unpack(MsgPack.pack(-4.5))
+-4.5
 
 julia> f = open("in.mp")
 julia> MsgPack.unpack(f)
 "hello"
 
 julia> f2 = open("out.mp", "w")
-julia> MsgPack.pack(f2, [1,2,"hi"])
-
-
+julia> MsgPack.pack(f2, [1, 2, "hi"])
 
 ```
-NOTE: The standard method for encoding integers in msgpack is to use the most compact representation possible, and to encode negative integers as signed ints and non-negative numbers as unsigned ints.
+
+## NOTE
+
+In a round trip, `Tuple` would be interpreted as `Array`.
+
+The standard method for encoding integers in msgpack is to use the most compact representation possible, and to encode negative integers as signed ints and non-negative numbers as unsigned ints.
 
 For compatibility with other implementations, I'm following this convention.  On the unpacking side, every integer type becomes an Int64 in Julia, unless it doesn't fit (ie. values greater than 2^63 are unpacked as Uint64).
 
 I might change this at some point, and/or provide a way to control the unpacked types.
 
-### The Extension Type
+## The Extension Type
 
 The MsgPack spec [defines](https://github.com/msgpack/msgpack/blob/master/spec.md#formats-ext) the [extension type](https://github.com/msgpack/msgpack/blob/master/spec.md#types-extension-type) to be a tuple of `(typecode, bytearray)` where `typecode` is an application-specific identifier for the data in `bytearray`. MsgPack.jl provides support for the extension type through the `Ext` immutable.
 
@@ -66,7 +74,7 @@ julia> a = [0x34, 0xff, 0x76, 0x22, 0xd3, 0xab]
  0xd3
  0xab
 
-julia> b = Ext(22, a)
+julia> b = MsgPack.Ext(22, a)
 MsgPack.Ext(22,UInt8[0x34,0xff,0x76,0x22,0xd3,0xab])
 
 julia> p = pack(b)
@@ -91,42 +99,58 @@ true
 MsgPack reserves typecodes in the range `[-128, -1]` for future types specified by the MsgPack spec. MsgPack.jl enforces this when creating an `Ext` but if you are packing an implementation defined extension type (currently there are none) you can pass `impltype=true`.
 
 ```julia
-julia> Ext(-43, Uint8[1, 5, 3, 9])
+julia> MsgPack.Ext(-43, Uint8[1, 5, 3, 9])
 ERROR: MsgPack Ext typecode -128 through -1 reserved by implementation
- in call at /Users/sean/.julia/v0.4/MsgPack/src/MsgPack.jl:48 
+ in call at /Users/sean/.julia/v0.4/MsgPack/src/MsgPack.jl:48
 
-julia> Ext(-43, Uint8[1, 5, 3, 9], impltype=true)
+julia> MsgPack.Ext(-43, Uint8[1, 5, 3, 9], impltype=true)
 MsgPack.Ext(-43,UInt8[0x01,0x05,0x03,0x09])
 ```
 
-#### Serialization
 
-MsgPack.jl also defines the `extserialize` and `extdeserialize` convenience functions. These functions can turn an arbitrary object into an `Ext` and vice-versa.
+## Custom Encoding
 
 ```julia
-julia> type Point{T}
-        x::T
-        y::T
-       end
+immutable A
+    a::Int
+    b::String
+end
 
-julia> r = Point(2.5, 7.8)
-Point{Float64}(2.5,7.8)
+function MsgPack.encode(x::A)::Vector{UInt8}
+    tmp = x.a, x.b
+    MsgPack.pack(tmp)
+end
 
-julia> e = MsgPack.extserialize(123, r)
-MsgPack.Ext(123,UInt8[0x11,0x01,0x02,0x05,0x50,0x6f,0x69,0x6e,0x74,0x23  …  0x40,0x0e,0x33,0x33,0x33,0x33,0x33,0x33,0x1f,0x40])
+function MsgPack.decode(::Type{A}, x::Vector{UInt8})::A
+   a, b = MsgPack.unpack(x)
+   A(a, b)
+end
 
-julia> s = MsgPack.extdeserialize(e)
-(123,Point{Float64}(2.5,7.8))
+MsgPack.register(A, 4)
 
-julia> s[2]
-Point{Float64}(2.5,7.8)
+julia> x = [A(2, "hi"), A(3, "you")]
+julia> MsgPack.unpack(MsgPack.pack(x))
+2-element Array{A,1}:
+ A(2,"hi")
+ A(3,"you")
 
-julia> r
-Point{Float64}(2.5,7.8)
+julia> x = Dict(1 => A(3, "you"), 2 => A(2, "hi"))
+julia> MsgPack.unpack(MsgPack.pack(x))
+Dict{Int64,A} with 2 entries:
+  2 => A(2,"hi")
+  1 => A(3,"you")
 ```
 
-Since these functions use [`serialize`](http://docs.julialang.org/en/latest/stdlib/base/#Base.serialize) under the hood they are subject to the following caveat.
+If `encode` or `decode` is not overriden, a generic version is used and it works for simple composite types.
 
-> In general, this process will not work if the reading and writing are done by
-> different versions of Julia, or an instance of Julia with a different system
-> image.
+```julia
+function encode(x)::Vector{UInt8}
+    tmp = [getfield(x, name) for name in fieldnames(x)]
+    MsgPack.pack(tmp)
+end
+
+function decode{T}(::Type{T}, x::Vector{UInt8})::T
+    args = MsgPack.unpack(x)
+    T(args...)
+end
+```
