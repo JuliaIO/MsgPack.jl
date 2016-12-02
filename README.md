@@ -39,7 +39,7 @@ julia> MsgPack.pack(f2, [1, 2, "hi"])
 
 ```
 
-## NOTE
+## Note
 
 In a round trip, `Tuple` would be interpreted as `Array`.
 
