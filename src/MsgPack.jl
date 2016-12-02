@@ -58,7 +58,7 @@ function register{T}(::Type{T}, typecode::Integer)
         error("Type Code $typecode was already registered")
     end
     if haskey(TYPE_TO_TYPECODE, T)
-        error("Type $t was already registered with typecode $typecode")
+        error("Type $T was already registered with typecode $typecode")
     end
     TYPE_TO_TYPECODE[T] = typecode
     TYPECODE_TO_TYPE[typecode] = T
