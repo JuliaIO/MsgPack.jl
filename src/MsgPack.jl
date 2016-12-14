@@ -162,7 +162,7 @@ unpack_arr(s, n) = begin
     out
 end
 
-unpack_str(s, n) = Compat.UTF8String(read(s, n))
+unpack_str(s, n) = String(read(s, n))
 unpack_ext(s, n) = Ext(read(s, Int8), read(s, n), impltype=true)
 unpack_bin(s, n) = read(s, n)
 
