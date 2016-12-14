@@ -62,7 +62,7 @@ end
 function extserialize(t::Integer, d)
     i = IOBuffer()
     serialize(i, d)
-    return Ext(t, takebuf_array(i))
+    return Ext(t, take!(i))
 end
 
 # return (typecode, object) from an Ext where Ext.data is a serialized object
@@ -121,15 +121,15 @@ unpack(s::IO) = begin
 
     elseif b <= 0x8f
         # fixmap
-        unpack_map(s, b $ MAP_F)
+        unpack_map(s, xor(b, MAP_F))
 
     elseif b <= 0x9f
         # fixarray
-        unpack_arr(s, b $ ARR_F)
+        unpack_arr(s, xor(b, ARR_F))
 
     elseif b <= 0xbf
         # fixstr
-        unpack_str(s, b $ STR_F)
+        unpack_str(s, xor(b, STR_F))
 
     elseif 0xd4 <= b <= 0xd8
         # fixext
@@ -162,9 +162,9 @@ unpack_arr(s, n) = begin
     out
 end
 
-unpack_str(s, n) = utf8(readbytes(s, n))
-unpack_ext(s, n) = Ext(read(s, Int8), readbytes(s, n), impltype=true)
-unpack_bin(s, n) = readbytes(s, n)
+unpack_str(s, n) = String(read(s, n))
+unpack_ext(s, n) = Ext(read(s, Int8), read(s, n), impltype=true)
+unpack_bin(s, n) = read(s, n)
 
 wh(io, head, v) = begin
     write(io, head)
@@ -174,7 +174,7 @@ end
 pack(v) = begin
     s = IOBuffer()
     pack(s, v)
-    takebuf_array(s)
+    take!(s)
 end
 
 
