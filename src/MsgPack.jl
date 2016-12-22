@@ -191,7 +191,7 @@ pack(s, v::Integer) = begin
             wh(s, INT_16, Int16(v))
         elseif v >= -2^31
             wh(s, INT_32, Int32(v))
-        elseif v >= -2^63
+        elseif v >= -Int64(2)^63
             wh(s, INT_64, Int64(v))
         else
             error("MsgPack signed int overflow")
@@ -203,7 +203,7 @@ pack(s, v::Integer) = begin
             wh(s, UINT_8, UInt8(v))
         elseif v <= 2^16-1
             wh(s, UINT_16, UInt16(v))
-        elseif v <= 2^32-1
+        elseif v <= UInt64(2)^32-1
             wh(s, UINT_32, UInt32(v))
         elseif v <= UInt64(2)^64-1
             wh(s, UINT_64, UInt64(v))
@@ -230,7 +230,7 @@ pack(s, v::AbstractString) = begin
     #    wh(s, 0xd9, UInt8(n))
     elseif n < 2^16
         wh(s, 0xda, UInt16(n))
-    elseif n < 2^32
+    elseif n < UInt64(2)^32
         wh(s, 0xdb, UInt32(n))
     else
         error("MsgPack str overflow: ", n)
@@ -255,7 +255,7 @@ pack(s, v::Ext) = begin
         wh(s, 0xc7, UInt8(n))
     elseif n < 2^16
         wh(s, 0xc8, UInt16(n))
-    elseif n < 2^32
+    elseif n < UInt64(2)^32
         wh(s, 0xc9, UInt32(n))
     else
         error("MsgPack ext overflow: ", n)
@@ -271,7 +271,7 @@ pack(s, v::Vector{UInt8}) = begin
         wh(s, 0xc4, UInt8(n))
     elseif n < 2^16
         wh(s, 0xc5, UInt16(n))
-    elseif n < 2^32
+    elseif n < UInt64(2)^32
         wh(s, 0xc6, UInt32(n))
     else
         error("MsgPack bin overflow: ", n)
@@ -286,7 +286,7 @@ pack(s, v::Union{Vector, Tuple}) = begin
         write(s, ARR_F | UInt8(n))
     elseif n < 2^16
         wh(s, 0xdc, UInt16(n))
-    elseif n < 2^32
+    elseif n < UInt64(2)^32
         wh(s, 0xdd, UInt32(n))
     else
         error("MsgPack array overflow: ", n)
@@ -304,7 +304,7 @@ pack(s, v::Dict) = begin
         write(s, MAP_F | UInt8(n))
     elseif n < 2^16
         wh(s, 0xde, UInt16(n))
-    elseif n < 2^32
+    elseif n < UInt64(2)^32
         wh(s, 0xdf, UInt32(n))
     else
         error("MsgPack map overflow: ", n)
