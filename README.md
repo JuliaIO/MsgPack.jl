@@ -2,6 +2,12 @@
 
 [![Build Status](https://travis-ci.org/kmsquire/MsgPack.jl.svg?branch=master)](https://travis-ci.org/kmsquire/MsgPack.jl)
 
+[![Build Status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4?svg=true)](https://ci.appveyor.com/project/kmsquire/msgpack-jl)
+
+[![Coverage Status](https://coveralls.io/repos/kmsquire/MsgPack.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/kmsquire/MsgPack.jl?branch=master)
+
+[![codecov.io](http://codecov.io/github/kmsquire/MsgPack.jl/coverage.svg?branch=master)](http://codecov.io/github/kmsquire/MsgPack.jl?branch=master)
+
 Provides basic support for the [msgpack](http://msgpack.org) format.
 
 ```
@@ -93,7 +99,7 @@ MsgPack reserves typecodes in the range `[-128, -1]` for future types specified 
 ```julia
 julia> Ext(-43, Uint8[1, 5, 3, 9])
 ERROR: MsgPack Ext typecode -128 through -1 reserved by implementation
- in call at /Users/sean/.julia/v0.4/MsgPack/src/MsgPack.jl:48 
+ in call at /Users/sean/.julia/v0.4/MsgPack/src/MsgPack.jl:48
 
 julia> Ext(-43, Uint8[1, 5, 3, 9], impltype=true)
 MsgPack.Ext(-43,UInt8[0x01,0x05,0x03,0x09])
