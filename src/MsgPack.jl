@@ -198,7 +198,7 @@ end
 
 unpack_bin(s::IO, n::Integer) = read(s, n)
 
-wh(io::IO, head, v) = begin
+function wh(io::IO, head, v)
     write(io, head)
     write(io, hton(v))
 end

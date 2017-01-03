@@ -4,7 +4,7 @@
 
 ## Overview
 
-This package provides basic support for the [msgpack](http://msgpack.org) format.
+This package provides basic support for the [msgpack](http://msgpack.org) format. It only works for 64-bit machine.
 
 This fork adds
 
