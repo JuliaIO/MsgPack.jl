@@ -38,7 +38,6 @@ const MAP_32   = 0xdf
 
 const INT_FN   = (0xe0, 0xff)
 
-const TYPE_TO_TYPECODE = Dict{DataType, Int8}()
 const TYPECODE_TO_TYPE = Dict{Int8, DataType}()
 
 # For custom encoding.
@@ -52,15 +51,19 @@ function decode{T}(::Type{T}, x::Vector{UInt8})::T
     T(args...)
 end
 
+"""
+- Use function overloadiings instead of dict.
+- Because we want to return typecode of the parent type if self is not defined.
+- E.g., in parameteric types `A{T}`.
+"""
+get_typecode(T::DataType) = error("Type $T is not registered with a typecode")
 
 function register{T}(::Type{T}, typecode::Integer)
     if haskey(TYPECODE_TO_TYPE, typecode)
         error("Type Code $typecode was already registered")
     end
-    if haskey(TYPE_TO_TYPECODE, T)
-        error("Type $T was already registered with typecode $typecode")
-    end
-    TYPE_TO_TYPECODE[T] = typecode
+    global get_typecode
+    get_typecode(x::T)::Int8 = typecode
     TYPECODE_TO_TYPE[typecode] = T
 end
 
@@ -351,11 +354,7 @@ end
 
 # Custom
 function pack{T}(s::IO, v::T)
-    typecode = try
-        TYPE_TO_TYPECODE[T]
-    catch
-        error("Type $T is not registered with a typecode")
-    end
+    typecode = get_typecode(v)
     data = encode(v)::Vector{UInt8}
     pack(s, Ext(typecode, data))
 end

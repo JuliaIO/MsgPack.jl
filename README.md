@@ -110,12 +110,34 @@ MsgPack.Ext(-43,UInt8[0x01,0x05,0x03,0x09])
 
 ## Custom Encoding
 
+For a simple composite type `A`, if we want to assign it a typecode 4.
+
 ```julia
 immutable A
     a::Int
     b::String
 end
+```
 
+Simply do `MsgPack.register(A, 4)`.
+
+It uses the default `encode` & `decode`.
+
+```julia
+function encode(x)::Vector{UInt8}
+    tmp = [getfield(x, name) for name in fieldnames(x)]
+    MsgPack.pack(tmp)
+end
+
+function decode{T}(::Type{T}, x::Vector{UInt8})::T
+    args = MsgPack.unpack(x)
+    T(args...)
+end
+```
+
+Alternatively we can overload the methods.
+
+```julia
 function MsgPack.encode(x::A)::Vector{UInt8}
     tmp = x.a, x.b
     MsgPack.pack(tmp)
@@ -125,8 +147,6 @@ function MsgPack.decode(::Type{A}, x::Vector{UInt8})::A
    a, b = MsgPack.unpack(x)
    A(a, b)
 end
-
-MsgPack.register(A, 4)
 
 julia> x = [A(2, "hi"), A(3, "you")]
 julia> MsgPack.unpack(MsgPack.pack(x))
@@ -141,16 +161,18 @@ Dict{Int64,A} with 2 entries:
   1 => A(3,"you")
 ```
 
-If `encode` or `decode` is not overriden, a generic version is used and it works for simple composite types.
+It works for parametric types too.
 
 ```julia
-function encode(x)::Vector{UInt8}
-    tmp = [getfield(x, name) for name in fieldnames(x)]
-    MsgPack.pack(tmp)
+immutable B{T}
+    a::T
 end
 
-function decode{T}(::Type{T}, x::Vector{UInt8})::T
-    args = MsgPack.unpack(x)
-    T(args...)
-end
+MsgPack.register(B, 5)
+julia> MsgPack.unpack(MsgPack.pack(B(1)))
+B{Int64}(1)
+
+MsgPack.register(B{Int}, 6)
+julia> MsgPack.unpack(MsgPack.pack(B(1)))
+B{Int64}(1)
 ```

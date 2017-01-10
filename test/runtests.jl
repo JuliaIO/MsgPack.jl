@@ -148,6 +148,15 @@ Base.:(==)(x::A, y::A) = x.a == y.a && x.b == y.b
 
 MsgPack.register(A, 4)
 
+
+immutable B{T}
+    a::T
+end
+
+Base.:(==){T}(x::B{T}, y::B{T}) = x.a == y.a
+
+MsgPack.register(B, 5)
+
 # Test generic encoding.
 
 let
@@ -161,17 +170,30 @@ let
 end
 
 
+let
+    x = [B(2), B(3)]
+    @test round_trip(x) == x
+end
+
+let
+    x = Dict(1 => B("you"), 2 => B("hi"))
+    @test round_trip(x) == x
+end
+
+
+# Test custom encoding.
+
 function MsgPack.encode(x::A)::Vector{UInt8}
+    println("Use custom encoder for A")
     tmp = x.a, x.b
     MsgPack.pack(tmp)
 end
 
 function MsgPack.decode(::Type{A}, x::Vector{UInt8})::A
+    println("Use custom decoder for A")
     a, b = MsgPack.unpack(x)
     A(a, b)
 end
-
-# Test custom encoding.
 
 let
     x = [A(2, "hi"), A(3, "you")]
@@ -184,5 +206,25 @@ let
 end
 
 
+function MsgPack.encode(x::B)::Vector{UInt8}
+    println("Use custom encoder for B")
+    MsgPack.pack(x.a)
+end
+
+function MsgPack.decode(::Type{B}, x::Vector{UInt8})::B
+    println("Use custom decoder for B")
+    a = MsgPack.unpack(x)
+    B(a)
+end
+
+let
+    x = [B(2), B(3)]
+    @test round_trip(x) == x
+end
+
+let
+    x = Dict(1 => B("you"), 2 => B("hi"))
+    @test round_trip(x) == x
+end
 
 
