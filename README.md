@@ -1,12 +1,12 @@
 # MsgPack
 
-[![Build Status](https://travis-ci.org/kmsquire/MsgPack.jl.svg?branch=master)](https://travis-ci.org/kmsquire/MsgPack.jl)
+[![Build Status](https://travis-ci.org/JuliaIO/MsgPack.jl.svg?branch=master)](https://travis-ci.org/JuliaIO/MsgPack.jl)
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4?svg=true)](https://ci.appveyor.com/project/kmsquire/msgpack-jl)
+[![Build Status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4?svg=true)](https://ci.appveyor.com/project/JuliaIO/msgpack-jl)
 
-[![Coverage Status](https://coveralls.io/repos/kmsquire/MsgPack.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/kmsquire/MsgPack.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/JuliaIO/MsgPack.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaIO/MsgPack.jl?branch=master)
 
-[![codecov.io](http://codecov.io/github/kmsquire/MsgPack.jl/coverage.svg?branch=master)](http://codecov.io/github/kmsquire/MsgPack.jl?branch=master)
+[![codecov.io](http://codecov.io/github/JuliaIO/MsgPack.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaIO/MsgPack.jl?branch=master)
 
 Provides basic support for the [msgpack](http://msgpack.org) format.
 
