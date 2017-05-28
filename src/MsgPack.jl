@@ -155,11 +155,7 @@ unpack_map(s, n) = begin
 end
 
 unpack_arr(s, n) = begin
-    out = Array(Any, n)
-    for i in 1:n
-        out[i] = unpack(s)
-    end
-    out
+    Any[unpack(s) for i in 1:n]
 end
 
 unpack_str(s, n) = String(read(s, n))
