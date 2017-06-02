@@ -72,7 +72,7 @@ extdeserialize(e::Ext) = (e.typecode, deserialize(IOBuffer(e.data)))
 readn(s, t) = ntoh(read(s, t))
 readi(s, t) = Int64(readn(s, t))
 
-readu64(s, t) = begin
+function readu64(s, t)
     v = UInt64(readn(s, t))
     if v > 2^63-1
         v
@@ -112,7 +112,7 @@ const DISPATCH =
         )
 
 unpack(s) = unpack(IOBuffer(s))
-unpack(s::IO) = begin
+function unpack(s::IO)
     b = read(s, UInt8)
 
     if b <= 0x7f
@@ -144,7 +144,7 @@ unpack(s::IO) = begin
     end
 end
 
-unpack_map(s, n) = begin
+function unpack_map(s, n)
     out = Dict()
     for i in 1:n
         k = unpack(s)
@@ -154,24 +154,20 @@ unpack_map(s, n) = begin
     out
 end
 
-unpack_arr(s, n) = begin
-    out = Array(Any, n)
-    for i in 1:n
-        out[i] = unpack(s)
-    end
-    out
+function unpack_arr(s, n)
+    Any[unpack(s) for i in 1:n]
 end
 
 unpack_str(s, n) = String(read(s, n))
 unpack_ext(s, n) = Ext(read(s, Int8), read(s, n), impltype=true)
 unpack_bin(s, n) = read(s, n)
 
-wh(io, head, v) = begin
+function wh(io, head, v)
     write(io, head)
     write(io, hton(v))
 end
 
-pack(v) = begin
+function pack(v)
     s = IOBuffer()
     pack(s, v)
     take!(s)
@@ -181,7 +177,7 @@ end
 pack(s, ::Void) = write(s, NIL)
 pack(s, v::Bool)   = if v write(s, TRUE) else write(s, FALSE) end
 
-pack(s, v::Integer) = begin
+function pack(s, v::Integer)
     if v < 0
         if v >= -32
             write(s, Int8(v))
@@ -217,7 +213,7 @@ pack(s, v::Float32) = wh(s, 0xca, v)
 pack(s, v::Float64) = wh(s, 0xcb, v)
 
 # str format
-pack(s, v::AbstractString) = begin
+function pack(s, v::AbstractString)
     n = sizeof(v)
     if n < 2^5
         write(s, STR_F | UInt8(n))
@@ -239,7 +235,7 @@ pack(s, v::AbstractString) = begin
 end
 
 # ext format
-pack(s, v::Ext) = begin
+function pack(s, v::Ext)
     n = sizeof(v.data)
     if n == 1
         write(s, 0xd4)
@@ -265,7 +261,7 @@ pack(s, v::Ext) = begin
 end
 
 # bin format
-pack(s, v::Vector{UInt8}) = begin
+function pack(s, v::Vector{UInt8})
     n = length(v)
     if n < 2^8
         wh(s, 0xc4, UInt8(n))
@@ -280,7 +276,7 @@ pack(s, v::Vector{UInt8}) = begin
 end
 
 # Simple arrays
-pack(s, v::Union{Vector, Tuple}) = begin
+function pack(s, v::Union{Vector, Tuple})
     n = length(v)
     if n < 2^4
         write(s, ARR_F | UInt8(n))
@@ -298,7 +294,7 @@ pack(s, v::Union{Vector, Tuple}) = begin
 end
 
 # Maps
-pack(s, v::Dict) = begin
+function pack(s, v::Dict)
     n = length(v)
     if n < 2^4
         write(s, MAP_F | UInt8(n))
