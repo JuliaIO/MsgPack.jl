@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/JuliaIO/MsgPack.jl.svg?branch=master)](https://travis-ci.org/JuliaIO/MsgPack.jl)
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4?svg=true)](https://ci.appveyor.com/project/JuliaIO/msgpack-jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4/branch/master?svg=true)](https://ci.appveyor.com/project/kmsquire/msgpack-jl/branch/master)
 
 [![Coverage Status](https://coveralls.io/repos/JuliaIO/MsgPack.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaIO/MsgPack.jl?branch=master)
 
