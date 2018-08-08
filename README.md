@@ -54,7 +54,7 @@ The MsgPack spec [defines](https://github.com/msgpack/msgpack/blob/master/spec.m
 It is defined like so
 
 ```julia
-immutable Ext
+struct Ext
     typecode::Int8
     data::Vector{Uint8}
 end
@@ -110,7 +110,7 @@ MsgPack.Ext(-43,UInt8[0x01,0x05,0x03,0x09])
 MsgPack.jl also defines the `extserialize` and `extdeserialize` convenience functions. These functions can turn an arbitrary object into an `Ext` and vice-versa.
 
 ```julia
-julia> type Point{T}
+julia> mutable struct Point{T}
         x::T
         y::T
        end
