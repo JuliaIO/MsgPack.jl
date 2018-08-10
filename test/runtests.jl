@@ -1,5 +1,6 @@
 using MsgPack
-using Base.Test
+using Test
+using Random
 
 ck_pack(a, b) = pack(a) == b && unpack(b) == a
 
@@ -51,12 +52,12 @@ ck_pack(a, b) = pack(a) == b && unpack(b) == a
 # str8 - currently unimplemented
 # str16
 s = randstring(2^8)
-@test ck_pack(s, vcat(0xda, 0x01, 0x00, convert(Vector{UInt8}, s)))
+@test ck_pack(s, vcat(0xda, 0x01, 0x00, transcode(UInt8, s)))
 s = randstring(2^16 - 1)
-@test ck_pack(s, vcat(0xda, 0xff, 0xff, convert(Vector{UInt8}, s)))
+@test ck_pack(s, vcat(0xda, 0xff, 0xff, transcode(UInt8, s)))
 # str32
 s = randstring(2^16)
-@test ck_pack(s, vcat(0xdb, 0x00, 0x01, 0x00, 0x00, convert(Vector{UInt8}, s)))
+@test ck_pack(s, vcat(0xdb, 0x00, 0x01, 0x00, 0x00, transcode(UInt8, s)))
 s = ""
 
 # bin8

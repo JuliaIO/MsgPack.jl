@@ -41,7 +41,7 @@ const MAP_32   = 0xdf
 
 const INT_FN   = 0xe0 # - 0xff
 
-immutable Ext
+struct Ext
     typecode::Int8
     data::Vector{UInt8}
 
@@ -174,7 +174,7 @@ function pack(v)
 end
 
 
-pack(s, ::Void) = write(s, NIL)
+pack(s, ::Nothing) = write(s, NIL)
 pack(s, v::Bool)   = if v write(s, TRUE) else write(s, FALSE) end
 
 function pack(s, v::Integer)
