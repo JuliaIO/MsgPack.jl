@@ -38,7 +38,7 @@ const MAP_32   = 0xdf
 
 const INT_FN   = (0xe0, 0xff)
 
-const TYPECODE_TO_TYPE = Dict{Int8, DataType}()
+const TYPECODE_TO_TYPE = Dict{Int8, Any}()
 
 # For custom encoding.
 function encode(x)::Vector{UInt8}
@@ -52,8 +52,8 @@ function decode{T}(::Type{T}, x::Vector{UInt8})::T
 end
 
 """
-- Use function overloadiings instead of dict.
-- Because we want to return typecode of the parent type if self is not defined.
+- Use function overloadings instead of dict.
+- Because we want to return the typecode of the parent type if self is not defined.
 - E.g., in parameteric types `A{T}`.
 """
 get_typecode(T::DataType) = error("Type $T is not registered with a typecode")
