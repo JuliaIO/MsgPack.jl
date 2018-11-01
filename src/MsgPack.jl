@@ -209,7 +209,7 @@ end
 function pack(v)
     s = IOBuffer()
     pack(s, v)
-    takebuf_array(s)
+    take!(s)
 end
 
 
