@@ -155,13 +155,13 @@ function unpack(s::IO)
         Int64(b)
     elseif b <= MAP_F[2]
         # fixmap
-        unpack_map(s, b $ MAP_F[1])
+        unpack_map(s, b ⊻ MAP_F[1])
     elseif b <= ARR_F[2]
         # fixarray
-        unpack_arr(s, b $ ARR_F[1])
+        unpack_arr(s, b ⊻ ARR_F[1])
     elseif b <= STR_F[2]
         # fixstr
-        unpack_str(s, b $ STR_F[1])
+        unpack_str(s, b ⊻ STR_F[1])
     elseif EXT_F[1] <= b <= EXT_F[2]
         # fixext
         unpack_ext(s, 2^(b - EXT_F[1]))
