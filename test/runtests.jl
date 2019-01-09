@@ -116,3 +116,14 @@ b = rand(UInt8, 2^14)
 b = rand(UInt8, 2^19)
 @test ck_pack(Ext(-123, b, impltype=true),
               vcat(0xc9, 0x00, 0x08, 0x00, 0x00, 0x85, b))
+
+# extserialize
+struct Point
+    x :: Int64
+    y :: Int64
+end
+
+b = Point(1, 2)
+ser = MsgPack.extserialize(101, b)
+deser = MsgPack.extdeserialize(ser)
+@test deser == (101, b)

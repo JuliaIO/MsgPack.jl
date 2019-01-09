@@ -1,5 +1,6 @@
 module MsgPack
 
+import Serialization: serialize, deserialize
 import Compat: take!, xor
 
 export pack, unpack, Ext
