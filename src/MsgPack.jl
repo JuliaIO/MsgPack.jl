@@ -2,7 +2,7 @@ module MsgPack
 
 import Compat: take!, xor
 
-export pack, unpack, Ext
+export pack, unpack_buffer, Ext
 import Base: ==
 
 const INT_FP   = 0x00 # - 0xf7
@@ -81,38 +81,12 @@ function readu64(s, t)
     end
 end
 
-const DISPATCH =
-    Dict(NIL      => s -> nothing,
-         UNUSED   => s -> error("unused"),
-         FALSE    => s -> false,
-         TRUE     => s -> true,
-         BIN_8    => s -> unpack_bin(s, readn(s, UInt8)),
-         BIN_16   => s -> unpack_bin(s, readn(s, UInt16)),
-         BIN_32   => s -> unpack_bin(s, readn(s, UInt32)),
-         EXT_8    => s -> unpack_ext(s, readn(s, UInt8)),
-         EXT_16   => s -> unpack_ext(s, readn(s, UInt16)),
-         EXT_32   => s -> unpack_ext(s, readn(s, UInt32)),
-         FLOAT_32 => s -> readn(s, Float32),
-         FLOAT_64 => s -> readn(s, Float64),
-         UINT_8   => s -> readi(s, UInt8),
-         UINT_16  => s -> readi(s, UInt16),
-         UINT_32  => s -> readi(s, UInt32),
-         UINT_64  => s -> readu64(s, UInt64),
-         INT_8    => s -> readi(s, Int8),
-         INT_16   => s -> readi(s, Int16),
-         INT_32   => s -> readi(s, Int32),
-         INT_64   => s -> readi(s, Int64),
-         STR_8    => s -> unpack_str(s, readn(s, UInt8)),
-         STR_16   => s -> unpack_str(s, readn(s, UInt16)),
-         STR_32   => s -> unpack_str(s, readn(s, UInt32)),
-         ARR_16   => s -> unpack_arr(s, readn(s, UInt16)),
-         ARR_32   => s -> unpack_arr(s, readn(s, UInt32)),
-         MAP_16   => s -> unpack_map(s, readn(s, UInt16)),
-         MAP_32   => s -> unpack_map(s, readn(s, UInt32))
-        )
+unpack(s) = unpack_buffer(IOBuffer(s))
 
-unpack(s) = unpack(IOBuffer(s))
-function unpack(s::IO)
+# Read the whole buffer in one go is more performant
+unpack(io::IO) = unpack_buffer(IOBuffer(read(io)))
+
+function unpack_buffer(s::IO)
     b = read(s, UInt8)
 
     if b <= 0x7f
@@ -134,10 +108,60 @@ function unpack(s::IO)
     elseif 0xd4 <= b <= 0xd8
         # fixext
         unpack_ext(s, 2^(b - EXT_F))
-
-    elseif b <= 0xdf
-        DISPATCH[b](s)
-
+    elseif b == NIL
+        nothing
+    elseif b == UNUSED
+        error("unused")
+    elseif b == FALSE
+        false
+    elseif b == TRUE
+        true
+    elseif b == BIN_8
+        unpack_bin(s, readn(s, UInt8))
+    elseif b == BIN_16
+        unpack_bin(s, readn(s, UInt16))
+    elseif b == BIN_32
+        unpack_bin(s, readn(s, UInt32))
+    elseif b == EXT_8
+        unpack_ext(s, readn(s, UInt8))
+    elseif b == EXT_16
+        unpack_ext(s, readn(s, UInt16))
+    elseif b == EXT_32
+        unpack_ext(s, readn(s, UInt32))
+    elseif b == FLOAT_32
+        readn(s, Float32)
+    elseif b == FLOAT_64
+        readn(s, Float64)
+    elseif b == UINT_8
+        readi(s, UInt8)
+    elseif b == UINT_16
+        readi(s, UInt16)
+    elseif b == UINT_32
+        readi(s, UInt32)
+    elseif b == UINT_64
+        readu64(s, UInt64)
+    elseif b == INT_8
+        readi(s, Int8)
+    elseif b == INT_16
+        readi(s, Int16)
+    elseif b == INT_32
+        readi(s, Int32)
+    elseif b == INT_64
+        readi(s, Int64)
+    elseif b == STR_8
+        unpack_str(s, readn(s, UInt8))
+    elseif b == STR_16
+        unpack_str(s, readn(s, UInt16))
+    elseif b == STR_32
+        unpack_str(s, readn(s, UInt32))
+    elseif b == ARR_16
+        unpack_arr(s, readn(s, UInt16))
+    elseif b == ARR_32
+        unpack_arr(s, readn(s, UInt32))
+    elseif b == MAP_16
+        unpack_map(s, readn(s, UInt16))
+    elseif b == MAP_32
+        unpack_map(s, readn(s, UInt32))
     else
         # negative fixint
         Int64(reinterpret(Int8, b))
@@ -147,15 +171,15 @@ end
 function unpack_map(s, n)
     out = Dict()
     for i in 1:n
-        k = unpack(s)
-        v = unpack(s)
+        k = unpack_buffer(s)
+        v = unpack_buffer(s)
         out[k] = v
     end
     out
 end
 
 function unpack_arr(s, n)
-    Any[unpack(s) for i in 1:n]
+    Any[unpack_buffer(s) for i in 1:n]
 end
 
 unpack_str(s, n) = String(read(s, n))
