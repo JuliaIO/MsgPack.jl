@@ -2,7 +2,7 @@ module MsgPack
 
 import Compat: take!, xor
 
-export pack, unpack_buffer, Ext
+export pack, unpack, Ext
 import Base: ==
 
 const INT_FP   = 0x00 # - 0xf7
