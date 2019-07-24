@@ -5,6 +5,8 @@ import Compat: take!, xor
 export pack, unpack, Ext
 import Base: ==
 
+using Serialization
+
 const INT_FP   = 0x00 # - 0xf7
 const MAP_F    = 0x80 # - 0x8f
 const ARR_F    = 0x90 # - 0x9f
