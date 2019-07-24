@@ -81,10 +81,9 @@ function readu64(s, t)
     end
 end
 
-unpack(s) = unpack_buffer(IOBuffer(s))
-
-# Read the whole buffer in one go is more performant
-unpack(io::IO) = unpack_buffer(IOBuffer(read(io)))
+unpack(s) = unpack(IOBuffer(s))
+unpack(bytes::Vector) = unpack(IOBuffer(bytes))
+unpack(io::IO) = unpack_buffer(io)
 
 function unpack_buffer(s::IO)
     b = read(s, UInt8)
