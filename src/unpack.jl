@@ -1,6 +1,6 @@
 @inline unpack(x) = unpack(x, Any)
 @inline unpack(bytes, ::Type{T}) where {T} = unpack(IOBuffer(bytes), T)::T
-@inline unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, msgpacktype(T), T)::T
+@inline unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, msgpack_type(T), T)::T
 
 #####
 ##### `AnyType`
@@ -43,11 +43,11 @@
     elseif byte === magic_byte(Str32Format)
         return unpack_format(io, Str32Format(), T)
     elseif byte === magic_byte(TrueFormat)
-        return construct(T, true)
+        return from_msgpack(T, true)
     elseif byte === magic_byte(FalseFormat)
-        return construct(T, false)
+        return from_msgpack(T, false)
     elseif byte === magic_byte(NilFormat)
-        return construct(T, nothing)
+        return from_msgpack(T, nothing)
     elseif byte === magic_byte(Array16Format)
         return unpack_format(io, Array16Format(), T)
     elseif byte === magic_byte(Array32Format)
@@ -78,14 +78,15 @@ end
     N = fieldcount(T)
     read(io, UInt8) > magic_byte_max(MapFixFormat) && read(io, UInt8)
     Base.@nexprs 32 i -> begin
-        F_i = fieldtype(T, i) # TODO should skip field names
-        x_i = unpack_type(io, msgpacktype(F_i), F_i)
+        F_i = fieldtype(T, i)
+        unpack_type(io, StringType(), Skip)
+        x_i = unpack_type(io, msgpack_type(F_i), F_i)
         N == i && return Base.@ncall i T x
     end
     others = Any[]
-    for i = 33:N
+    for i in 33:N
         F_i = fieldtype(T, i)
-        push!(others, unpack_type(io, msgpacktype(F_i), F_i))
+        push!(others, unpack_type(io, msgpack_type(F_i), F_i))
     end
     return T(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
              x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30,
@@ -159,18 +160,18 @@ end
     end
 end
 
-@inline unpack_format(io, f::IntFixPositiveFormat, ::Type{T}) where {T} = construct(T, UInt8(f.byte))
-@inline unpack_format(io, f::IntFixNegativeFormat, ::Type{T}) where {T} = construct(T, Int8(f.byte))
+@inline unpack_format(io, f::IntFixPositiveFormat, ::Type{T}) where {T} = from_msgpack(T, UInt8(f.byte))
+@inline unpack_format(io, f::IntFixNegativeFormat, ::Type{T}) where {T} = from_msgpack(T, Int8(f.byte))
 
-@inline unpack_format(io, ::UInt8Format, ::Type{T}) where {T} = construct(T, read(io, UInt8))
-@inline unpack_format(io, ::UInt16Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, UInt16)))
-@inline unpack_format(io, ::UInt32Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, UInt32)))
-@inline unpack_format(io, ::UInt64Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, UInt64)))
+@inline unpack_format(io, ::UInt8Format, ::Type{T}) where {T} = from_msgpack(T, read(io, UInt8))
+@inline unpack_format(io, ::UInt16Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, UInt16)))
+@inline unpack_format(io, ::UInt32Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, UInt32)))
+@inline unpack_format(io, ::UInt64Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, UInt64)))
 
-@inline unpack_format(io, ::Int8Format, ::Type{T}) where {T} = construct(T, read(io, Int8))
-@inline unpack_format(io, ::Int16Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, Int16)))
-@inline unpack_format(io, ::Int32Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, Int32)))
-@inline unpack_format(io, ::Int64Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, Int64)))
+@inline unpack_format(io, ::Int8Format, ::Type{T}) where {T} = from_msgpack(T, read(io, Int8))
+@inline unpack_format(io, ::Int16Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, Int16)))
+@inline unpack_format(io, ::Int32Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, Int32)))
+@inline unpack_format(io, ::Int64Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, Int64)))
 
 #####
 ##### `NilType`
@@ -180,7 +181,7 @@ end
 
 @inline function unpack_format(io, f::NilFormat, ::Type{T}) where {T}
     byte = read(io, UInt8)
-    byte === magic_byte(NilFormat) && return construct(T, nothing)
+    byte === magic_byte(NilFormat) && return from_msgpack(T, nothing)
     invalid_unpack(io, f, T)
 end
 
@@ -190,20 +191,20 @@ end
 
 @inline function unpack_type(io, t::BooleanType, ::Type{T}) where {T}
     byte = read(io, UInt8)
-    byte === magic_byte(TrueFormat) && return construct(T, true)
-    byte === magic_byte(FalseFormat) && return construct(T, false)
+    byte === magic_byte(TrueFormat) && return from_msgpack(T, true)
+    byte === magic_byte(FalseFormat) && return from_msgpack(T, false)
     invalid_unpack(io, byte, t, T)
 end
 
 @inline function unpack_format(io, f::TrueFormat, ::Type{T}) where {T}
     byte = read(io, UInt8)
-    byte === magic_byte(TrueFormat) && return construct(T, true)
+    byte === magic_byte(TrueFormat) && return from_msgpack(T, true)
     invalid_unpack(io, f, T)
 end
 
 @inline function unpack_format(io, f::FalseFormat, ::Type{T}) where {T}
     byte = read(io, UInt8)
-    byte === magic_byte(FalseFormat) && return construct(T, false)
+    byte === magic_byte(FalseFormat) && return from_msgpack(T, false)
     invalid_unpack(io, f, T)
 end
 
@@ -222,8 +223,8 @@ end
     end
 end
 
-@inline unpack_format(io, ::Float32Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, Float32)))
-@inline unpack_format(io, ::Float64Format, ::Type{T}) where {T} = construct(T, ntoh(read(io, Float64)))
+@inline unpack_format(io, ::Float32Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, Float32)))
+@inline unpack_format(io, ::Float64Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, Float64)))
 
 #####
 ##### `StringType`
@@ -249,25 +250,17 @@ end
 @inline unpack_format(io, ::Str32Format, ::Type{T}) where {T} = _unpack_string(io, ntoh(read(io, UInt32)), T)
 @inline unpack_format(io, f::StrFixFormat, ::Type{T}) where {T} = _unpack_string(io, xor(f.byte, magic_byte_min(StrFixFormat)), T)
 
-@inline _unpack_string(io, n, ::Type{T}) where {T} = construct(T, String(read(io, n)))
+@inline _unpack_string(io, n, ::Type{T}) where {T} = from_msgpack(T, String(read(io, n)))
+@inline _unpack_string(io, n, ::Type{Skip}) = (skip(io, n); Skip())
+@inline _unpack_string(io::Base.GenericIOBuffer, n, ::Type{Skip}) = (skip(io, n); Skip())
 
 # Below is a nice optimization we can apply when `io` wraps an indexable byte
 # buffer; this is really nice for skipping an extra copy when we deserialize
-# the field names of `T` where `msgpacktype(T)::MutableStruct`. Like much of
+# the field names of `T` where `msgpack_type(T)::MutableStruct`. Like much of
 # this package, this trick can be traced back to Jacob Quinn's magnificent
 # JSON3.jl!
-
-struct PointerString
-    ptr::Ptr{UInt8}
-    len::Int
-end
-
-@inline construct(::Type{Symbol}, x::PointerString) = ccall(:jl_symbol_n, Ref{Symbol}, (Ptr{UInt8}, Int), x.ptr, x.len)
-@inline construct(::Type{PointerString}, x::PointerString) = x
-@inline construct(S::Type, x::PointerString) = construct(S, unsafe_string(x.ptr, x.len))
-
 @inline function _unpack_string(io::Base.GenericIOBuffer, n, ::Type{T}) where {T}
-    result = construct(T, PointerString(pointer(io.data, io.ptr), n))
+    result = from_msgpack(T, PointerString(pointer(io.data, io.ptr), n))
     skip(io, n)
     return result
 end
@@ -293,10 +286,11 @@ end
 @inline unpack_format(io, ::Bin16Format, ::Type{T}) where {T} = _unpack_binary(io, ntoh(read(io, UInt16)), T)
 @inline unpack_format(io, ::Bin32Format, ::Type{T}) where {T} = _unpack_binary(io, ntoh(read(io, UInt32)), T)
 
-@inline _unpack_binary(io, n, ::Type{T}) where {T} = construct(T, read(io, n))
+@inline _unpack_binary(io, n, ::Type{T}) where {T} = from_msgpack(T, read(io, n))
+@inline _unpack_binary(io, n, ::Type{Skip}) = (skip(io, n); Skip())
 
 #####
-##### `array` format
+##### `ArrayType`
 #####
 
 @inline function unpack_type(io, t::ArrayType, ::Type{T}) where {T}
@@ -318,12 +312,23 @@ end
 
 @inline function _unpack_array(io, n, ::Type{T}) where {T}
     E = eltype(T)
-    e = msgpacktype(E)
-    return construct(T, E[unpack_type(io, e, E) for _ in 1:n])
+    e = msgpack_type(E)
+    result = Vector{E}(undef, n)
+    for i in 1:n
+        result[i] = unpack_type(io, e, E)
+    end
+    return from_msgpack(T, result)
+end
+
+@inline function _unpack_array(io, n, ::Type{Skip}) where {T}
+    for _ in 1:n
+        unpack_type(io, AnyType(), Skip)
+    end
+    return Skip()
 end
 
 #####
-##### `map` format
+##### `MapType`
 #####
 
 @inline function unpack_type(io, t::MapType, ::Type{T}) where {T}
@@ -350,17 +355,30 @@ end
 
 @inline function _unpack_map(io, n, ::Type{T}) where {T}
     K = _keytype(T)
-    k = msgpacktype(K)
+    k = msgpack_type(K)
     V = _valtype(T)
-    v = msgpacktype(V)
+    v = msgpack_type(V)
     dict = Dict{K,V}()
     for _ in 1:n
         key = unpack_type(io, k, K)
         val = unpack_type(io, v, V)
         dict[key] = val
     end
-    return construct(T, dict)
+    return from_msgpack(T, dict)
 end
+
+@inline function _unpack_map(io, n, ::Type{Skip}) where {T}
+    for _ in 1:n
+        unpack_type(io, AnyType(), Skip)
+        unpack_type(io, AnyType(), Skip)
+    end
+    return Skip()
+end
+
+#####
+##### `ExtensionType`
+#####
+# TODO
 
 #####
 ##### utilities
