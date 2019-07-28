@@ -32,7 +32,7 @@ struct ImmutableStructType end
 
 struct MutableStructType end
 
-struct Skip end
+struct Skip{T} end
 
 #####
 ##### `msgpack_type`, `to_msgpack`, `from_msgpack` defaults
@@ -102,11 +102,13 @@ end
 
 @inline msgpack_type(::Type) = AnyType()
 
+@inline msgpack_type(::Type{Skip{T}}) where {T} = msgpack_type(T)
+
 @inline to_msgpack(::AbstractMsgPackType, x) = x
 
 @inline from_msgpack(T::Type, x) = convert(T, x)
 
-@inline from_msgpack(::Type{Skip}, x) = Skip()
+@inline from_msgpack(::Type{T}, x) where {T<:Skip} = T()
 
 #####
 ##### `PointerString`
