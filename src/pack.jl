@@ -1,10 +1,10 @@
-@inline function pack(x)
+function pack(x)
     io = IOBuffer(UInt8[]; append = true)
     pack(io, x)
     return io.data
 end
 
-@inline function pack(io::IO, x)
+function pack(io::IO, x)
     pack_type(io, msgpack_type(typeof(x)), x)
     return io
 end
@@ -19,7 +19,7 @@ pack_type(io, t::AnyType, x) = error("") # TODO
 ##### `ImmutableStructType` + `MutableStructType`
 #####
 
-@inline function pack_type(io,
+function pack_type(io,
                            t::Union{ImmutableStructType,MutableStructType},
                            x::T) where {T}
     N = fieldcount(T)
@@ -52,7 +52,7 @@ end
 ##### `IntegerType`
 #####
 
-@inline function pack_type(io, t::IntegerType, x)
+function pack_type(io, t::IntegerType, x)
     x = to_msgpack(t, x)
     if x < 0
         x >= -32 && return pack_format(io, IntFixNegativeFormat(Int8(x)))
@@ -70,17 +70,17 @@ end
     invalid_pack(io, t, x)
 end
 
-@inline pack_format(io, f::Union{IntFixNegativeFormat,IntFixPositiveFormat}) = write(io, f.byte)
-@inline pack_format(io, f::Int8Format, x) = _pack_integer(io, f, Int8, x)
-@inline pack_format(io, f::Int16Format, x) = _pack_integer(io, f, Int16, x)
-@inline pack_format(io, f::Int32Format, x) = _pack_integer(io, f, Int32, x)
-@inline pack_format(io, f::Int64Format, x) = _pack_integer(io, f, Int64, x)
-@inline pack_format(io, f::UInt8Format, x) = _pack_integer(io, f, UInt8, x)
-@inline pack_format(io, f::UInt16Format, x) = _pack_integer(io, f, UInt16, x)
-@inline pack_format(io, f::UInt32Format, x) = _pack_integer(io, f, UInt32, x)
-@inline pack_format(io, f::UInt64Format, x) = _pack_integer(io, f, UInt64, x)
+pack_format(io, f::Union{IntFixNegativeFormat,IntFixPositiveFormat}) = write(io, f.byte)
+pack_format(io, f::Int8Format, x) = _pack_integer(io, f, Int8, x)
+pack_format(io, f::Int16Format, x) = _pack_integer(io, f, Int16, x)
+pack_format(io, f::Int32Format, x) = _pack_integer(io, f, Int32, x)
+pack_format(io, f::Int64Format, x) = _pack_integer(io, f, Int64, x)
+pack_format(io, f::UInt8Format, x) = _pack_integer(io, f, UInt8, x)
+pack_format(io, f::UInt16Format, x) = _pack_integer(io, f, UInt16, x)
+pack_format(io, f::UInt32Format, x) = _pack_integer(io, f, UInt32, x)
+pack_format(io, f::UInt64Format, x) = _pack_integer(io, f, UInt64, x)
 
-@inline function _pack_integer(io, ::F, ::Type{T}, x) where {F,T}
+function _pack_integer(io, ::F, ::Type{T}, x) where {F,T}
     y = hton(T(x))
     write(io, magic_byte(F))
     write(io, y)
@@ -90,41 +90,41 @@ end
 ##### `NilType`
 #####
 
-@inline pack_type(io, ::NilType, x) = pack_format(io, NilFormat(), x)
+pack_type(io, ::NilType, x) = pack_format(io, NilFormat(), x)
 
-@inline pack_format(io, ::NilFormat, ::Any) = write(io, magic_byte(NilFormat))
+pack_format(io, ::NilFormat, ::Any) = write(io, magic_byte(NilFormat))
 
 #####
 ##### `BooleanType`
 #####
 
-@inline function pack_type(io, t::BooleanType, x)
+function pack_type(io, t::BooleanType, x)
     x == true && return pack_format(io, TrueFormat(), x)
     x == false && return pack_format(io, FalseFormat(), x)
     invalid_pack(io, t, x)
 end
 
-@inline pack_format(io, ::TrueFormat, ::Any) = write(io, magic_byte(TrueFormat))
-@inline pack_format(io, ::FalseFormat, ::Any) = write(io, magic_byte(FalseFormat))
+pack_format(io, ::TrueFormat, ::Any) = write(io, magic_byte(TrueFormat))
+pack_format(io, ::FalseFormat, ::Any) = write(io, magic_byte(FalseFormat))
 
 #####
 ##### `FloatType`
 #####
 
-@inline function pack_type(io, t::FloatType, x)
+function pack_type(io, t::FloatType, x)
     x = to_msgpack(t, x)
     typemin(Float32) <= x <= typemax(Float32) && return pack_format(io, Float32Format(), x)
     typemin(Float64) <= x <= typemax(Float64) && return pack_format(io, Float64Format(), x)
     invalid_pack(io, t, x)
 end
 
-@inline function pack_format(io, ::Float32Format, x)
+function pack_format(io, ::Float32Format, x)
     y = Float32(x)
     write(io, magic_byte(Float32Format))
     write(io, hton(y))
 end
 
-@inline function pack_format(io, ::Float64Format, x)
+function pack_format(io, ::Float64Format, x)
     y = Float64(x)
     write(io, magic_byte(Float64Format))
     write(io, hton(y))
@@ -134,7 +134,7 @@ end
 ##### `StringType`
 #####
 
-@inline function pack_type(io, t::StringType, x)
+function pack_type(io, t::StringType, x)
     x = to_msgpack(t, x)
     n = length(x)
     n <= 31 && return pack_format(io, StrFixFormat(magic_byte_min(StrFixFormat) | UInt8(n)), x)
@@ -144,24 +144,24 @@ end
     invalid_pack(io, t, x)
 end
 
-@inline function pack_format(io, f::StrFixFormat, x)
+function pack_format(io, f::StrFixFormat, x)
     write(io, f.byte)
     write(io, x)
 end
 
-@inline function pack_format(io, ::Str8Format, x)
+function pack_format(io, ::Str8Format, x)
     write(io, magic_byte(Str8Format))
     write(io, UInt8(length(x)))
     write(io, x)
 end
 
-@inline function pack_format(io, ::Str16Format, x)
+function pack_format(io, ::Str16Format, x)
     write(io, magic_byte(Str16Format))
     write(io, hton(UInt16(length(x))))
     write(io, x)
 end
 
-@inline function pack_format(io, ::Str32Format, x)
+function pack_format(io, ::Str32Format, x)
     write(io, magic_byte(Str32Format))
     write(io, hton(UInt32(length(x))))
     write(io, x)
@@ -171,7 +171,7 @@ end
 ##### `BinaryType`
 #####
 
-@inline function pack_type(io, t::BinaryType, x)
+function pack_type(io, t::BinaryType, x)
     x = to_msgpack(t, x)
     n = length(x)
     n <= typemax(UInt8) && return pack_format(io, Bin8Format(), x)
@@ -180,19 +180,19 @@ end
     invalid_pack(io, t, x)
 end
 
-@inline function pack_format(io, ::Bin8Format, x)
+function pack_format(io, ::Bin8Format, x)
     write(io, magic_byte(Bin8Format))
     write(io, UInt8(length(x)))
     write(io, x)
 end
 
-@inline function pack_format(io, ::Bin16Format, x)
+function pack_format(io, ::Bin16Format, x)
     write(io, magic_byte(Bin16Format))
     write(io, hton(UInt16(length(x))))
     write(io, x)
 end
 
-@inline function pack_format(io, ::Bin32Format, x)
+function pack_format(io, ::Bin32Format, x)
     write(io, magic_byte(Bin32Format))
     write(io, hton(UInt32(length(x))))
     write(io, x)
@@ -202,7 +202,7 @@ end
 ##### `ArrayType`
 #####
 
-@inline function pack_type(io, t::ArrayType, x)
+function pack_type(io, t::ArrayType, x)
     x = to_msgpack(t, x)
     n = length(x)
     n <= 15 && return pack_format(io, ArrayFixFormat(magic_byte_min(ArrayFixFormat) | UInt8(n)), x)
@@ -211,14 +211,14 @@ end
     invalid_pack(io, t, x)
 end
 
-@inline function pack_format(io, f::ArrayFixFormat, x)
+function pack_format(io, f::ArrayFixFormat, x)
     write(io, f.byte)
     for i in x
         pack(io, i)
     end
 end
 
-@inline function pack_format(io, ::Array16Format, x)
+function pack_format(io, ::Array16Format, x)
     write(io, magic_byte(Array16Format))
     write(io, hton(UInt16(length(x))))
     for i in x
@@ -226,7 +226,7 @@ end
     end
 end
 
-@inline function pack_format(io, ::Array32Format, x)
+function pack_format(io, ::Array32Format, x)
     write(io, magic_byte(Array32Format))
     write(io, hton(UInt32(length(x))))
     for i in x
@@ -238,7 +238,7 @@ end
 ##### `MapType`
 #####
 
-@inline function pack_type(io, t::MapType, x)
+function pack_type(io, t::MapType, x)
     x = to_msgpack(t, x)
     n = length(x)
     n <= 15 && return pack_format(io, MapFixFormat(magic_byte_min(MapFixFormat) | UInt8(n)), x)
@@ -247,7 +247,7 @@ end
     invalid_pack(io, t, x)
 end
 
-@inline function pack_format(io, f::MapFixFormat, x)
+function pack_format(io, f::MapFixFormat, x)
     write(io, f.byte)
     for (k, v) in x
         pack(io, k)
@@ -255,7 +255,7 @@ end
     end
 end
 
-@inline function pack_format(io, ::Map16Format, x)
+function pack_format(io, ::Map16Format, x)
     write(io, magic_byte(Map16Format))
     write(io, hton(UInt16(length(x))))
     for (k, v) in x
@@ -264,7 +264,7 @@ end
     end
 end
 
-@inline function pack_format(io, ::Map32Format, x)
+function pack_format(io, ::Map32Format, x)
     write(io, magic_byte(Map32Format))
     write(io, hton(UInt32(length(x))))
     for (k, v) in x

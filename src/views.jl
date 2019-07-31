@@ -12,7 +12,7 @@ Base.IndexStyle(::Type{<:ArrayView}) = Base.IndexLinear()
 
 Base.size(arr::ArrayView) = (length(arr.positions),)
 
-@inline Base.@propagate_inbounds function Base.getindex(arr::ArrayView{T}, i::Int) where {T}
+Base.@propagate_inbounds function Base.getindex(arr::ArrayView{T}, i::Int) where {T}
     @boundscheck checkbounds(arr, i)
     @inbounds start = arr.positions[i]
     @inbounds stop = i == length(arr) ? length(arr.bytes) : arr.positions[i + 1]
@@ -32,16 +32,16 @@ end
 
 Base.length(m::MapView) = length(m.positions)
 
-@inline function _get(m::MapView, i, j, ::Type{T}) where {T}
+function _get(m::MapView, i, j, ::Type{T}) where {T}
     start = m.positions[i][j]
     stop = i == length(m) ? length(m.bytes) : m.positions[i + 1][j]
     current_bytes = view(m.bytes, start:stop)
     return unpack(current_bytes, T)
 end
 
-@inline _get_key(m::MapView, i) = _get(m, i, 1, keytype(m))
+_get_key(m::MapView, i) = _get(m, i, 1, keytype(m))
 
-@inline _get_value(m::MapView, i) = _get(m, i, 2, valtype(m))
+_get_value(m::MapView, i) = _get(m, i, 2, valtype(m))
 
 function Base.get(m::MapView, key)
     for i in 1:length(m)
@@ -64,9 +64,9 @@ function Base.get(default::Base.Callable, m::MapView, key)
     return default()
 end
 
-@inline Base.iterate(m::MapView) = iterate(m, 1)
+Base.iterate(m::MapView) = iterate(m, 1)
 
-@inline function Base.iterate(m::MapView, i)
+function Base.iterate(m::MapView, i)
     i > length(m) && return nothing
     result = _get_key(m, i) => _get_value(m, i)
     return result, i + 1
