@@ -20,8 +20,8 @@ pack_type(io, t::AnyType, x) = error("") # TODO
 #####
 
 function pack_type(io,
-                           t::Union{ImmutableStructType,MutableStructType},
-                           x::T) where {T}
+                   t::Union{ImmutableStructType,MutableStructType},
+                   x::T) where {T}
     N = fieldcount(T)
     if N <= 15
         write(io, magic_byte_min(MapFixFormat) | UInt8(N))

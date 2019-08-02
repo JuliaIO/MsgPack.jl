@@ -74,23 +74,30 @@ end
 ##### `ImmutableStructType`
 #####
 
+struct Constructor{T} end
+
+(::Constructor{T})(args...) where {T} = construct(T, args...)
+
+construct(::Type{T}, args...) where {T} = T(args...)
+
 function unpack_type(io, ::ImmutableStructType, ::Type{T}) where {T}
+    constructor = Constructor{T}()
     N = fieldcount(T)
     read(io, UInt8) > magic_byte_max(MapFixFormat) && read(io, UInt8)
     Base.@nexprs 32 i -> begin
         F_i = fieldtype(T, i)
         unpack_type(io, StringType(), Skip{Symbol})
         x_i = unpack_type(io, msgpack_type(F_i), F_i)
-        N == i && return Base.@ncall i T x
+        N == i && return Base.@ncall i constructor x
     end
     others = Any[]
     for i in 33:N
         F_i = fieldtype(T, i)
         push!(others, unpack_type(io, msgpack_type(F_i), F_i))
     end
-    return T(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
-             x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30,
-             x31, x32, vals...)
+    return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
+                       x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
+                       x26, x27, x28, x29, x30, x31, x32, vals...)
 end
 
 function unpack_type(io, ::ImmutableStructType, ::Type{Skip{T}}) where {T}
