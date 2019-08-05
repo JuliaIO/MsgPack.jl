@@ -215,7 +215,7 @@ unpack_format(io, ::Int64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T())
 ##### `NilType`
 #####
 
-unpack_type(io, t::NilType, ::Type{T}) where {T} = unpack_format(io, t, T)
+unpack_type(io, ::NilType, ::Type{T}) where {T} = unpack_format(io, NilFormat(), T)
 unpack_type(io, ::NilType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
 
 function unpack_format(io, f::NilFormat, ::Type{T}) where {T}
