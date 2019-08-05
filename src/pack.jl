@@ -13,7 +13,20 @@ end
 ##### `AnyType`
 #####
 
-pack_type(io, t::AnyType, x) = error("") # TODO
+# This function might've been reached via another `pack_type` method that
+# relied on reflection and ended up calling `msgpack_type` on a type that
+# didn't have a non-`AnyType` mapping, even if the underlying value it's trying
+# serialize does (e.g. an object field with a `Union` type). Thus, before giving
+# up, we first attempt to resolve the issue by calling `msgpack_type(typeof(x))`
+# directly.
+function pack_type(io, t::AnyType, x)
+    tx = msgpack_type(typeof(x))
+    if tx isa AnyType
+        error("no non-`AnyType` MsgPack mapping found for ", typeof(x), "; please ",
+              "overload `msgpack_type` for this type".) # TODO
+    end
+    return pack_type(io, tx, x)
+end
 
 #####
 ##### `ImmutableStructType` + `MutableStructType`
