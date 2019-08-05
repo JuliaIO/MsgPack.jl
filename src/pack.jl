@@ -23,7 +23,7 @@ function pack_type(io, t::AnyType, x)
     tx = msgpack_type(typeof(x))
     if tx isa AnyType
         error("no non-`AnyType` MsgPack mapping found for ", typeof(x), "; please ",
-              "overload `msgpack_type` for this type".) # TODO
+              "overload `msgpack_type` for this type.")
     end
     return pack_type(io, tx, x)
 end
