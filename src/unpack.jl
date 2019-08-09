@@ -6,8 +6,22 @@ unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, msgpack_type(T), T)::T
 ##### `AnyType`
 #####
 
-function unpack_type(io, t::AnyType, ::Type{T}) where {T}
+function unpack_type(io, t::AnyType, U::Union)
     byte = read(io, UInt8)
+    A, B = U.a, U.b # Unions are sorted, so `Nothing`/`Missing` would be first
+    if A === Nothing || A === Missing
+        byte === magic_byte(NilFormat) && return from_msgpack(A, nothing)
+        return _unpack_any(io, byte, B)
+    end
+    return _unpack_any(io, byte, U)
+end
+
+@inline function unpack_type(io, ::AnyType, ::Type{T}) where {T}
+    byte = read(io, UInt8)
+    return _unpack_any(io, byte, T)
+end
+
+function _unpack_any(io, byte, ::Type{T}) where {T}
     if byte <= magic_byte_max(IntFixPositiveFormat)
         return unpack_format(io, IntFixPositiveFormat(byte), T)
     elseif byte <= magic_byte_max(MapFixFormat)
@@ -65,7 +79,7 @@ function unpack_type(io, t::AnyType, ::Type{T}) where {T}
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
         return unpack_format(io, IntFixNegativeFormat(byte), T)
     else
-        invalid_unpack(io, byte, t, T)
+        invalid_unpack(io, byte, AnyType(), T)
     end
     # TODO Ext*Format
 end
