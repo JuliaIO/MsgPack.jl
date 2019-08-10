@@ -423,9 +423,9 @@ unpack_format(io, ::Map32Format, ::Type{T}) where {T} = _unpack_map(io, ntoh(rea
 unpack_format(io, f::MapFixFormat, ::Type{T}) where {T} = _unpack_map(io, xor(f.byte, magic_byte_min(MapFixFormat)), T)
 
 _keytype(T) = Any
-_keytype(::Type{T}) where {T<:AbstractDict} = keytype(T)
+_keytype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = keytype(T)
 _valtype(T) = Any
-_valtype(::Type{T}) where {T<:AbstractDict} = valtype(T)
+_valtype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = valtype(T)
 
 function _unpack_map(io, n, ::Type{T}) where {T}
     K = _keytype(T)
