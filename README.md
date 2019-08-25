@@ -4,14 +4,13 @@ This is a WIP MsgPack implementation in pure Julia, inspired by [JSON3.jl](https
 
 Currently, this package supports:
 
-- basic packing/unpacking
-- overloadable pre-(de)serialization definitions via `from_msgpack` and `to_msgpack`.
-- automatic type construction/destruction via `msgpack_type`, `ImmutableStructType`, `MutableStructType`, etc.
-- some very, *very* basic zero-copy "views" over MsgPack-formatted byte buffers (`ArrayView`, `MapView`).
+- basic packing/unpacking (see `pack` and `unpack`)
+- overloadable pre-(de)serialization transformations (see `from_msgpack` and `to_msgpack`)
+- automatic type construction/destruction (see `msgpack_type`, `ImmutableStructType`, and `MutableStructType`)
+- some basic zero-copy immutable "views" over MsgPack-formatted byte buffers (see `ArrayView`, `MapView`).
 
 Things that still need to happen:
 
-- docs
 - tests
-- MsgPack extension types
+- support for MsgPack extension types
 - collaboration with original MsgPack.jl (maybe we will just fold this into there?)

@@ -1,9 +1,28 @@
+
+"""
+    pack(x)
+
+Serialize `x` to MessagePack format and return the resulting `Vector{UInt8}`.
+
+This function uses [`msgpack_type`](@ref) and [`to_msgpack`](@ref) to determine
+the appropriate translation of the `value` into MessagePack format.
+
+See also: [`unpack`](@ref)
+"""
 function pack(x)
     io = IOBuffer(UInt8[]; append = true)
     pack(io, x)
-    return io.data
+    return take!(io)
 end
 
+
+"""
+    pack(io::IO, x)
+
+Like `pack(x)`, but write the resulting bytes to `io`.
+
+See also: [`unpack`](@ref)
+"""
 function pack(io::IO, x)
     pack_type(io, msgpack_type(typeof(x)), x)
     return io
@@ -112,6 +131,7 @@ pack_format(io, ::NilFormat, ::Any) = write(io, magic_byte(NilFormat))
 #####
 
 function pack_type(io, t::BooleanType, x)
+    x = to_msgpack(t, x)
     x == true && return pack_format(io, TrueFormat(), x)
     x == false && return pack_format(io, FalseFormat(), x)
     invalid_pack(io, t, x)

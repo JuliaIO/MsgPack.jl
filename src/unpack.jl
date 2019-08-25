@@ -1,5 +1,28 @@
+
 unpack(x) = unpack(x, Any)
+
+"""
+    unpack(bytes, T::Type = Any)
+
+Return `unpack(IOBuffer(bytes), T)`.
+"""
 unpack(bytes, ::Type{T}) where {T} = unpack(IOBuffer(bytes), T)::T
+
+"""
+    unpack(msgpack_byte_stream::IO, T::Type = Any)
+
+Return the Julia value of type `T` deserialized from `msgpack_byte_stream`.
+
+`T` is assumed to have valid [`msgpack_type`](@ref) and [`from_msgpack`](@ref)
+definitions.
+
+If `msgpack_type(T) === AnyType()`, `unpack` will deserialize the next
+MessagePack object from `msgpack_byte_stream` into the default Julia
+representation corresponding to the object's MessagePack type. For details on
+default Julia representations, see [`AbstractMsgPackType`](@ref).
+
+See also: [`pack`](@ref)
+"""
 unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, msgpack_type(T), T)::T
 
 #####
@@ -111,7 +134,7 @@ function unpack_type(io, ::ImmutableStructType, ::Type{T}) where {T}
     end
     return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
                        x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
-                       x26, x27, x28, x29, x30, x31, x32, vals...)
+                       x26, x27, x28, x29, x30, x31, x32, others...)
 end
 
 function unpack_type(io, ::ImmutableStructType, ::Type{Skip{T}}) where {T}

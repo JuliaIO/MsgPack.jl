@@ -2,6 +2,23 @@
 ##### `ArrayView`
 #####
 
+"""
+    ArrayView{T} <: AbstractVector{T}
+
+A Julia struct that wraps a MessagePack byte buffer to provide an immutable
+view of the MessagePack Array stored within the wrapped byte buffer.
+
+This type is intended to be utilized via [`unpack`](@ref). For example, a call
+to `arr = unpack(bytes, ArrayView{Dict{String,Int32}})` will generally return
+a value more quickly than `arr = unpack(bytes, Vector{Dict{String,Int32}})`;
+the latter will perform full deserialization immediately while the former will
+only scan over `bytes` to tag the positions of `arr`'s elements, deferring the
+actual deserialization of these elements to the time of their access via
+`arr[index]`.
+
+Note that `ArrayView` does not implement any form of caching - repeat accesses
+of the same element will re-deserialize the element upon every access.
+"""
 struct ArrayView{T,B<:AbstractVector{UInt8}} <: AbstractVector{T}
     bytes::B
     positions::Vector{UInt64}
@@ -24,6 +41,16 @@ end
 ##### `MapView`
 #####
 
+"""
+    MapView{K,V} <: AbstractDict{K,V}
+
+Similar to [`ArrayView`](@ref), but provides an immutable view to a MessagePack
+Map rather than a MessagePack Array.
+
+This type is intended to be utilized via [`unpack`](@ref) in the same manner as
+`ArrayView`, and is similarly implements a "delay-deserialization-until-access"
+mechanism.
+"""
 struct MapView{K,V,B<:AbstractVector{UInt8}} <: AbstractDict{K,V}
     bytes::B
     positions::Vector{Pair{UInt64,UInt64}}
