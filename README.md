@@ -1,5 +1,8 @@
 # MsgPack2.jl
 
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/stable/)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/latest/)
+
 This is a WIP MsgPack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl) and the original [MsgPack.jl](https://github.com/JuliaIO/MsgPack.jl).
 
 Currently, this package supports:
