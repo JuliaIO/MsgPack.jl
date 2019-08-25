@@ -3,11 +3,11 @@
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/stable/)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/latest/)
 
-This is a WIP MsgPack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl) and the original [MsgPack.jl](https://github.com/JuliaIO/MsgPack.jl).
+This package is a WIP MessagePack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl) and the original [MsgPack.jl](https://github.com/JuliaIO/MsgPack.jl).
 
 Currently, this package supports:
 
-- basic packing/unpacking (see `pack` and `unpack`)
+- basic (de)serialization of Julia values to/from MessagePack (see `pack` and `unpack`)
 - overloadable pre-(de)serialization transformations (see `from_msgpack` and `to_msgpack`)
 - automatic type construction/destruction (see `msgpack_type`, `ImmutableStructType`, and `MutableStructType`)
 - some basic zero-copy immutable "views" over MsgPack-formatted byte buffers (see `ArrayView`, `MapView`).
