@@ -11,15 +11,19 @@ end
 # IntegerType
 
 @test can_round_trip(30, UInt8)
-@test can_round_trip(rand(UInt8), UInt8)
-@test can_round_trip(rand(UInt16), UInt16)
-@test can_round_trip(rand(UInt32), UInt32)
-@test can_round_trip(rand(UInt64), UInt64)
 @test can_round_trip(-30, Int8)
-@test can_round_trip(rand(Int8), Int8)
-@test can_round_trip(rand(Int16), Int16)
-@test can_round_trip(rand(Int32), Int32)
-@test can_round_trip(rand(Int64), Int64)
+@test can_round_trip(typemax(UInt8), UInt8)
+@test can_round_trip(typemax(UInt16), UInt16)
+@test can_round_trip(typemax(UInt32), UInt32)
+@test can_round_trip(typemax(UInt64), UInt64)
+@test can_round_trip(typemax(Int8), Int8)
+@test can_round_trip(typemin(Int8), Int8)
+@test can_round_trip(typemax(Int16), Int16)
+@test can_round_trip(typemin(Int16), Int16)
+@test can_round_trip(typemax(Int32), Int32)
+@test can_round_trip(typemin(Int32), Int32)
+@test can_round_trip(typemax(Int64), Int64)
+@test can_round_trip(typemin(Int64), Int64)
 
 # NilType
 
@@ -64,7 +68,36 @@ bytes = rand(UInt8, typemax(UInt8) + 1)
 bytes = rand(UInt8, typemax(UInt16) + 1)
 @test can_round_trip(ByteVec(bytes), ByteVec, ByteVec(bytes), bytes)
 
-# TODO: ArrayType
-# TODO: MapType
+# ArrayType
+
+arr = [30, -30, typemax(UInt8), typemax(UInt16), typemax(UInt32), typemax(UInt64),
+       typemax(Int8), typemin(Int8), typemax(Int16), typemin(Int16), typemax(Int32),
+       typemin(Int32), typemax(Int64), typemin(Int64), nothing, rand(Float32),
+       rand(Float64), true, false, join(rand(Char, typemax(UInt8) - 1))]
+
+push!(arr, deepcopy(arr))
+
+@test can_round_trip(arr, Vector{Any})
+for x in arr
+    T = Vector{typeof(x)}
+    @test can_round_trip(fill(x, 30), T)
+    @test can_round_trip(fill(x, typemax(UInt8) - 1), T)
+    @test can_round_trip(fill(x, typemax(UInt8) + 1), T)
+    @test can_round_trip(fill(x, typemax(UInt16) + 1), T)
+end
+
+# MapType
+
+dict = Dict(zip(arr, reverse(arr)))
+
+@test can_round_trip(dict, Dict{Any,Any})
+for (k, v) in dict
+    T = Dict{typeof(k),typeof(v)}
+    @test can_round_trip(Dict(zip(fill(k, 30), fill(v, 30))),  T)
+    @test can_round_trip(Dict(zip(fill(k, typemax(UInt8) - 1), fill(v, typemax(UInt8) - 1))), T)
+    @test can_round_trip(Dict(zip(fill(k, typemax(UInt8) + 1), fill(v, typemax(UInt8) + 1))), T)
+    @test can_round_trip(Dict(zip(fill(k, typemax(UInt16) + 1), fill(v, typemax(UInt16) + 1))), T)
+end
+
 # TODO: ImmutableStructType
 # TODO: MutableStructType
