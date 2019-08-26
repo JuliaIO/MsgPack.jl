@@ -1,5 +1,8 @@
 # MsgPack2.jl
 
+[![Build Status](https://travis-ci.com/beacon-biosignals/MsgPack2.jl.svg?token=Jbjm3zfgVHsfbKqsz3ki&branch=master)](https://travis-ci.com/beacon-biosignals/MsgPack2.jl)
+[![codecov](https://codecov.io/gh/beacon-biosignals/MsgPack2.jl/branch/master/graph/badge.svg?token=D0bcI0Rtsw)](https://codecov.io/gh/beacon-biosignals/MsgPack2.jl)
+
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/stable/)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/latest/)
 

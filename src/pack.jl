@@ -1,4 +1,3 @@
-
 """
     pack(x)
 
@@ -14,7 +13,6 @@ function pack(x)
     pack(io, x)
     return take!(io)
 end
-
 
 """
     pack(io::IO, x)
@@ -146,8 +144,8 @@ pack_format(io, ::FalseFormat, ::Any) = write(io, magic_byte(FalseFormat))
 
 function pack_type(io, t::FloatType, x)
     x = to_msgpack(t, x)
-    typemin(Float32) <= x <= typemax(Float32) && return pack_format(io, Float32Format(), x)
-    typemin(Float64) <= x <= typemax(Float64) && return pack_format(io, Float64Format(), x)
+    x isa Float32 && return pack_format(io, Float32Format(), x)
+    x isa Float64 && return pack_format(io, Float64Format(), x)
     invalid_pack(io, t, x)
 end
 
@@ -169,7 +167,7 @@ end
 
 function pack_type(io, t::StringType, x)
     x = to_msgpack(t, x)
-    n = length(x)
+    n = sizeof(x)
     n <= 31 && return pack_format(io, StrFixFormat(magic_byte_min(StrFixFormat) | UInt8(n)), x)
     n <= typemax(UInt8) && return pack_format(io, Str8Format(), x)
     n <= typemax(UInt16) && return pack_format(io, Str16Format(), x)
@@ -184,19 +182,19 @@ end
 
 function pack_format(io, ::Str8Format, x)
     write(io, magic_byte(Str8Format))
-    write(io, UInt8(length(x)))
+    write(io, UInt8(sizeof(x)))
     write(io, x)
 end
 
 function pack_format(io, ::Str16Format, x)
     write(io, magic_byte(Str16Format))
-    write(io, hton(UInt16(length(x))))
+    write(io, hton(UInt16(sizeof(x))))
     write(io, x)
 end
 
 function pack_format(io, ::Str32Format, x)
     write(io, magic_byte(Str32Format))
-    write(io, hton(UInt32(length(x))))
+    write(io, hton(UInt32(sizeof(x))))
     write(io, x)
 end
 

@@ -11,7 +11,7 @@ struct IntFixPositiveFormat <: AbstractMsgPackFormat
 end
 
 struct IntFixNegativeFormat <: AbstractMsgPackFormat
-    byte::UInt8
+    byte::Int8
 end
 
 Base.@pure magic_byte_min(::Type{IntFixPositiveFormat}) = 0x00

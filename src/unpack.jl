@@ -1,4 +1,3 @@
-
 unpack(x) = unpack(x, Any)
 
 """
@@ -96,7 +95,7 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
     elseif byte === magic_byte(Bin32Format)
         return unpack_format(io, Bin32Format(), T)
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
-        return unpack_format(io, IntFixNegativeFormat(byte), T)
+        return unpack_format(io, IntFixNegativeFormat(reinterpret(Int8, byte)), T)
     else
         invalid_unpack(io, byte, AnyType(), T)
     end
@@ -210,7 +209,7 @@ function unpack_type(io, byte, t::IntegerType, ::Type{T}) where {T}
     elseif byte === magic_byte(Int64Format)
         return unpack_format(io, Int64Format(), T)
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
-        return unpack_format(io, IntFixNegativeFormat(byte), T)
+        return unpack_format(io, IntFixNegativeFormat(reinterpret(Int8, byte)), T)
     else
         invalid_unpack(io, byte, t, T)
     end
