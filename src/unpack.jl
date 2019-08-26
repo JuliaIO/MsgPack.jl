@@ -23,26 +23,22 @@ default Julia representations, see [`AbstractMsgPackType`](@ref).
 
 See also: [`pack`](@ref)
 """
-unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, msgpack_type(T), T)::T
+unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, read(io, UInt8), msgpack_type(T), T)::T
 
 #####
 ##### `AnyType`
 #####
 
-function unpack_type(io, t::AnyType, U::Union)
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::AnyType, U::Union)
     A, B = U.a, U.b # Unions are sorted, so `Nothing`/`Missing` would be first
     if A === Nothing || A === Missing
         byte === magic_byte(NilFormat) && return from_msgpack(A, nothing)
-        return _unpack_any(io, byte, B)
+        return unpack_type(io, byte, msgpack_type(B), B)
     end
     return _unpack_any(io, byte, U)
 end
 
-@inline function unpack_type(io, ::AnyType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
-    return _unpack_any(io, byte, T)
-end
+@inline unpack_type(io, byte, ::AnyType, T::Type) = _unpack_any(io, byte, T)
 
 function _unpack_any(io, byte, ::Type{T}) where {T}
     if byte <= magic_byte_max(IntFixPositiveFormat)
@@ -80,11 +76,11 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
     elseif byte === magic_byte(Str32Format)
         return unpack_format(io, Str32Format(), T)
     elseif byte === magic_byte(TrueFormat)
-        return from_msgpack(T, true)
+        return unpack_format(io, TrueFormat(), T)
     elseif byte === magic_byte(FalseFormat)
-        return from_msgpack(T, false)
+        return unpack_format(io, FalseFormat(), T)
     elseif byte === magic_byte(NilFormat)
-        return from_msgpack(T, nothing)
+        return unpack_format(io, NilFormat(), T)
     elseif byte === magic_byte(Array16Format)
         return unpack_format(io, Array16Format(), T)
     elseif byte === magic_byte(Array32Format)
@@ -117,38 +113,38 @@ struct Constructor{T} end
 
 construct(::Type{T}, args...) where {T} = T(args...)
 
-function unpack_type(io, ::ImmutableStructType, ::Type{T}) where {T}
+function unpack_type(io, byte, ::ImmutableStructType, ::Type{T}) where {T}
     constructor = Constructor{T}()
     N = fieldcount(T)
-    read(io, UInt8) > magic_byte_max(MapFixFormat) && read(io, UInt8)
+    byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
     Base.@nexprs 32 i -> begin
         F_i = fieldtype(T, i)
-        unpack_type(io, StringType(), Skip{Symbol})
-        x_i = unpack_type(io, msgpack_type(F_i), F_i)
+        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
+        x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i)
         N == i && return Base.@ncall i constructor x
     end
     others = Any[]
     for i in 33:N
         F_i = fieldtype(T, i)
-        push!(others, unpack_type(io, msgpack_type(F_i), F_i))
+        push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i))
     end
     return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
                        x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
                        x26, x27, x28, x29, x30, x31, x32, others...)
 end
 
-function unpack_type(io, ::ImmutableStructType, ::Type{Skip{T}}) where {T}
+function unpack_type(io, byte, ::ImmutableStructType, ::Type{Skip{T}}) where {T}
     N = fieldcount(T)
-    read(io, UInt8) > magic_byte_max(MapFixFormat) && read(io, UInt8)
+    byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
     Base.@nexprs 32 i -> begin
         F_i = fieldtype(T, i)
-        unpack_type(io, StringType(), Skip{Symbol})
-        unpack_type(io, msgpack_type(F_i), Skip{F_i})
+        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
+        unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
         N == i && return Skip{T}()
     end
     for i in 33:N
         F_i = fieldtype(T, i)
-        unpack_type(io, msgpack_type(F_i), Skip{F_i})
+        unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
     end
     return Skip{T}()
 end
@@ -157,9 +153,8 @@ end
 ##### `MutableStructType`
 #####
 
-function unpack_type(io, t::MutableStructType, ::Type{T}) where {T}
+function unpack_type(io, byte, t::MutableStructType, ::Type{T}) where {T}
     N = fieldcount(T)
-    byte = read(io, UInt8)
     if byte <= magic_byte_max(MapFixFormat)
         pair_count = xor(byte, magic_byte_min(MapFixFormat))
     elseif byte === magic_byte(Map16Format)
@@ -189,14 +184,13 @@ function unpack_type(io, t::MutableStructType, ::Type{T}) where {T}
     return object
 end
 
-unpack_type(io, ::MutableStructType, ::Type{<:Skip}) = unpack_type(io, MapType(), Skip{Dict{Any,Any}})
+unpack_type(io, byte, ::MutableStructType, ::Type{<:Skip}) = unpack_type(io, byte, MapType(), Skip{Dict{Any,Any}})
 
 #####
 ##### `IntegerType`
 #####
 
-function unpack_type(io, t::IntegerType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::IntegerType, ::Type{T}) where {T}
     if byte <= magic_byte_max(IntFixPositiveFormat)
         return unpack_format(io, IntFixPositiveFormat(byte), T)
     elseif byte === magic_byte(UInt8Format)
@@ -252,46 +246,36 @@ unpack_format(io, ::Int64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T())
 ##### `NilType`
 #####
 
-unpack_type(io, ::NilType, ::Type{T}) where {T} = unpack_format(io, NilFormat(), T)
-unpack_type(io, ::NilType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
-
-function unpack_format(io, f::NilFormat, ::Type{T}) where {T}
-    byte = read(io, UInt8)
-    byte === magic_byte(NilFormat) && return from_msgpack(T, nothing)
+function unpack_type(io, byte, ::NilType, ::Type{T}) where {T}
+    byte === magic_byte(NilFormat) && return unpack_format(io, NilFormat(), T)
     invalid_unpack(io, f, T)
 end
+
+unpack_type(io, byte, ::NilType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
+
+unpack_format(io, ::NilFormat, ::Type{T}) where {T} = from_msgpack(T, nothing)
 
 #####
 ##### `BooleanType`
 #####
 
-function unpack_type(io, t::BooleanType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
-    byte === magic_byte(TrueFormat) && return from_msgpack(T, true)
-    byte === magic_byte(FalseFormat) && return from_msgpack(T, false)
+function unpack_type(io, byte, t::BooleanType, ::Type{T}) where {T}
+    byte === magic_byte(TrueFormat) && return unpack_format(io, TrueFormat(), T)
+    byte === magic_byte(FalseFormat) && return unpack_format(io, FalseFormat(), T)
     invalid_unpack(io, byte, t, T)
 end
 
-unpack_type(io, ::BooleanType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
+unpack_type(io, byte, ::BooleanType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
 
-function unpack_format(io, f::TrueFormat, ::Type{T}) where {T}
-    byte = read(io, UInt8)
-    byte === magic_byte(TrueFormat) && return from_msgpack(T, true)
-    invalid_unpack(io, f, T)
-end
+unpack_format(io, ::TrueFormat, ::Type{T}) where {T} = from_msgpack(T, true)
 
-function unpack_format(io, f::FalseFormat, ::Type{T}) where {T}
-    byte = read(io, UInt8)
-    byte === magic_byte(FalseFormat) && return from_msgpack(T, false)
-    invalid_unpack(io, f, T)
-end
+unpack_format(io, ::FalseFormat, ::Type{T}) where {T} = from_msgpack(T, false)
 
 #####
 ##### `FloatType`
 #####
 
-function unpack_type(io, t::FloatType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::FloatType, ::Type{T}) where {T}
     if byte === magic_byte(Float32Format)
         return unpack_format(io, Float32Format(), T)
     elseif byte === magic_byte(Float64Format)
@@ -310,8 +294,7 @@ unpack_format(io, ::Float64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T(
 ##### `StringType`
 #####
 
-function unpack_type(io, t::StringType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::StringType, ::Type{T}) where {T}
     if byte <= magic_byte_max(StrFixFormat)
         return unpack_format(io, StrFixFormat(byte), T)
     elseif byte === magic_byte(Str8Format)
@@ -351,8 +334,7 @@ _unpack_string(io::Base.GenericIOBuffer, n, ::Type{T}) where {T<:Skip} = (skip(i
 ##### `BinaryType`
 #####
 
-function unpack_type(io, t::BinaryType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::BinaryType, ::Type{T}) where {T}
     if byte === magic_byte(Bin8Format)
         return unpack_format(io, Bin8Format(), T)
     elseif byte === magic_byte(Bin16Format)
@@ -375,8 +357,7 @@ _unpack_binary(io, n, ::Type{T}) where {T<:Skip} = (skip(io, n); T())
 ##### `ArrayType`
 #####
 
-function unpack_type(io, t::ArrayType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::ArrayType, ::Type{T}) where {T}
     if byte <= magic_byte_max(ArrayFixFormat)
         return unpack_format(io, ArrayFixFormat(byte), T)
     elseif byte === magic_byte(Array16Format)
@@ -397,7 +378,7 @@ function _unpack_array(io, n, ::Type{T}) where {T}
     e = msgpack_type(E)
     result = Vector{E}(undef, n)
     for i in 1:n
-        result[i] = unpack_type(io, e, E)
+        result[i] = unpack_type(io, read(io, UInt8), e, E)
     end
     return from_msgpack(T, result)
 end
@@ -406,7 +387,7 @@ function _unpack_array(io, n, ::Type{Skip{T}}) where {T}
     E = eltype(T)
     e = msgpack_type(E)
     for _ in 1:n
-        unpack_type(io, e, Skip{E})
+        unpack_type(io, read(io, UInt8), e, Skip{E})
     end
     return Skip{T}()
 end
@@ -418,7 +399,7 @@ function _unpack_array(io::Base.GenericIOBuffer, n, ::Type{T}) where {T<:ArrayVi
     positions = Vector{UInt64}(undef, n)
     for i in 1:length(positions)
         positions[i] = (position(io) - start) + 1
-        unpack_type(io, e, Skip{E})
+        unpack_type(io, read(io, UInt8), e, Skip{E})
     end
     bytes = view(io.data, (start + 1):position(io))
     return ArrayView{E}(bytes, positions)
@@ -428,8 +409,7 @@ end
 ##### `MapType`
 #####
 
-function unpack_type(io, t::MapType, ::Type{T}) where {T}
-    byte = read(io, UInt8)
+function unpack_type(io, byte, t::MapType, ::Type{T}) where {T}
     if byte <= magic_byte_max(MapFixFormat)
         return unpack_format(io, MapFixFormat(byte), T)
     elseif byte === magic_byte(Map16Format)
@@ -457,8 +437,8 @@ function _unpack_map(io, n, ::Type{T}) where {T}
     v = msgpack_type(V)
     dict = Dict{K,V}()
     for _ in 1:n
-        key = unpack_type(io, k, K)
-        val = unpack_type(io, v, V)
+        key = unpack_type(io, read(io, UInt8), k, K)
+        val = unpack_type(io, read(io, UInt8), v, V)
         dict[key] = val
     end
     return from_msgpack(T, dict)
@@ -470,8 +450,8 @@ function _unpack_map(io, n, ::Type{Skip{T}}) where {T}
     V = _valtype(T)
     v = msgpack_type(V)
     for i in 1:n
-        unpack_type(io, k, Skip{K})
-        unpack_type(io, v, Skip{V})
+        unpack_type(io, read(io, UInt8), k, Skip{K})
+        unpack_type(io, read(io, UInt8), v, Skip{V})
     end
     return Skip{T}()
 end
@@ -485,9 +465,9 @@ function _unpack_map(io::Base.GenericIOBuffer, n, ::Type{T}) where {T<:MapView}
     positions = Vector{Pair{UInt64,UInt64}}(undef, n)
     for i in 1:length(positions)
         key_position = (position(io) - start) + 1
-        unpack_type(io, k, Skip{K})
+        unpack_type(io, read(io, UInt8), k, Skip{K})
         value_position = (position(io) - start) + 1
-        unpack_type(io, v, Skip{V})
+        unpack_type(io, read(io, UInt8), v, Skip{V})
         positions[i] = key_position => value_position
     end
     bytes = view(io.data, (start + 1):position(io))
