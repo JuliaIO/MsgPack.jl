@@ -250,7 +250,7 @@ function unpack_type(io, byte, ::NilType, ::Type{T}) where {T}
     invalid_unpack(io, f, T)
 end
 
-unpack_type(io, byte, ::NilType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
+unpack_type(io, byte, ::NilType, ::Type{T}) where {T<:Skip} = T()
 
 unpack_format(io, ::NilFormat, ::Type{T}) where {T} = from_msgpack(T, nothing)
 
@@ -264,7 +264,7 @@ function unpack_type(io, byte, t::BooleanType, ::Type{T}) where {T}
     invalid_unpack(io, byte, t, T)
 end
 
-unpack_type(io, byte, ::BooleanType, ::Type{T}) where {T<:Skip} = (skip(io, 1); T())
+unpack_type(io, byte, ::BooleanType, ::Type{T}) where {T<:Skip} = T()
 
 unpack_format(io, ::TrueFormat, ::Type{T}) where {T} = from_msgpack(T, true)
 

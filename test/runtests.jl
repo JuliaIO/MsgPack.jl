@@ -80,11 +80,26 @@ push!(arr, deepcopy(arr))
 @test can_round_trip(arr, Vector{Any})
 for x in arr
     T = Vector{typeof(x)}
-    @test can_round_trip(fill(x, 9), T)
-    @test can_round_trip(fill(x, typemax(UInt8) - 1), T)
-    @test can_round_trip(fill(x, typemax(UInt8) + 1), T)
-    @test can_round_trip(fill(x, typemax(UInt16) + 1), T)
+    A = MsgPack2.ArrayView{typeof(x)}
+    a = fill(x, 9)
+    @test can_round_trip(a, T)
+    @test can_round_trip(a, A)
+    a = fill(x, typemax(UInt8) - 1)
+    @test can_round_trip(a, T)
+    @test can_round_trip(a, A)
+    a = fill(x, typemax(UInt8) + 1)
+    @test can_round_trip(a, T)
+    @test can_round_trip(a, A)
+    a = fill(x, typemax(UInt16) + 1)
+    @test can_round_trip(a, T)
+    @test can_round_trip(a, A)
 end
+
+tup = (arr...,)
+@test can_round_trip(tup, Tuple, tup, arr)
+
+set = Set(arr)
+@test can_round_trip(set, Set, set, collect(set))
 
 # MapType
 
@@ -93,11 +108,24 @@ dict = Dict(zip(arr, reverse(arr)))
 @test can_round_trip(dict, Dict{Any,Any})
 for v in values(dict)
     T = Dict{Int,typeof(v)}
-    @test can_round_trip(Dict(zip(1:9, fill(v, 9))), T)
-    @test can_round_trip(Dict(zip(1:(typemax(UInt8) - 1), fill(v, typemax(UInt8) - 1))), T)
-    @test can_round_trip(Dict(zip(1:(typemax(UInt8) + 1), fill(v, typemax(UInt8) + 1))), T)
-    @test can_round_trip(Dict(zip(1:(typemax(UInt16) + 1), fill(v, typemax(UInt16) + 1))), T)
+    M = MsgPack2.MapView{Int,typeof(v)}
+    d = Dict(zip(1:9, fill(v, 9)))
+    @test can_round_trip(d, T)
+    @test can_round_trip(d, M)
+    d = Dict(zip(1:(typemax(UInt8) - 1), fill(v, typemax(UInt8) - 1)))
+    @test can_round_trip(d, T)
+    @test can_round_trip(d, M)
+    d = Dict(zip(1:(typemax(UInt8) + 1), fill(v, typemax(UInt8) + 1)))
+    @test can_round_trip(d, T)
+    @test can_round_trip(d, M)
+    d = Dict(zip(1:(typemax(UInt16) + 1), fill(v, typemax(UInt16) + 1)))
+    @test can_round_trip(d, T)
+    @test can_round_trip(d, M)
 end
+
+namedtup = (x = arr[1], y = arr[2], z = arr[3], others = arr[4:end])
+namedtup_dict = Dict((string(k) => v for (k, v) in pairs(namedtup))...)
+@test can_round_trip(namedtup, NamedTuple{keys(namedtup),<:Tuple}, namedtup, namedtup_dict)
 
 # ImmutableStructType
 
