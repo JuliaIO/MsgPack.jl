@@ -302,6 +302,9 @@ msgpack_type(::Type{<:AbstractArray}) = ArrayType()
 msgpack_type(::Type{<:AbstractSet}) = ArrayType()
 msgpack_type(::Type{<:Tuple}) = ArrayType()
 
+from_msgpack(::Type{T}, x::Vector) where {T<:AbstractSet} = convert(T, Set(x))
+from_msgpack(::Type{T}, x::Vector) where {T<:Tuple} = convert(T, (x...,))
+
 # map-y things
 
 msgpack_type(::Type{<:AbstractDict}) = MapType()
