@@ -137,6 +137,9 @@ namedtup = (x = arr[1], y = arr[2], z = arr[3], others = arr[4:end])
 namedtup_dict = Dict((string(k) => v for (k, v) in pairs(namedtup))...)
 @test can_round_trip(namedtup, NamedTuple{keys(namedtup),<:Tuple}, namedtup, namedtup_dict)
 
+arr = [dict]
+@test can_round_trip(arr, MsgPack2.ArrayView{MsgPack2.MapView{Any,Any}})
+
 # ImmutableStructType
 
 struct Bar{T}
@@ -169,4 +172,45 @@ foo = Foo{Float64,Char}(rand(), rand('a':'z', 100), Bar(rand(), rand()))
 foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
 
-# TODO: MutableStructType
+arr = [foo, foo]
+@test can_round_trip(arr, MsgPack2.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
+
+# MutableStructType
+
+mutable struct MBar{T}
+    a::T
+    b::T
+    MBar{T}() where {T} = new{T}()
+end
+
+Base.:(==)(a::MBar, b::MBar) = a.a == b.a && a.b == b.b
+
+MsgPack2.msgpack_type(::Type{<:MBar}) = MsgPack2.MutableStructType()
+
+mutable struct MFoo{T,S}
+    x::Union{Nothing,T}
+    y::Vector{S}
+    z::MBar{T}
+    MFoo{T,S}() where {T,S} = new{T,S}()
+end
+
+Base.:(==)(a::MFoo, b::MFoo) = a.x == b.x && a.y == b.y && a.z == b.z
+
+MsgPack2.msgpack_type(::Type{<:MFoo}) = MsgPack2.MutableStructType()
+
+foo = MFoo{Int,String}()
+foo.x = nothing
+foo.y = String["abc", join(rand(Char,typemax(UInt16)))]
+foo.z = (z = MBar{Int}(); z.a = rand(Int); z.b = rand(Int); z)
+foo_dict = Dict("x" => foo.x, "y" => foo.y, "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
+@test can_round_trip(foo, typeof(foo), foo, foo_dict)
+
+foo = MFoo{Float64,Char}()
+foo.x = rand()
+foo.y = rand('a':'z', 100)
+foo.z = (z = MBar{Float64}(); z.a = rand(); z.b = rand(); z)
+foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
+@test can_round_trip(foo, typeof(foo), foo, foo_dict)
+
+arr = [foo, foo]
+@test can_round_trip(arr, MsgPack2.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
