@@ -461,13 +461,12 @@ function _unpack_map(io::Base.GenericIOBuffer, n, ::Type{T}) where {T<:MapView}
     V = _valtype(T)
     v = msgpack_type(V)
     start = position(io)
-    positions = Vector{Pair{UInt64,UInt64}}(undef, n)
-    for i in 1:length(positions)
-        key_position = (position(io) - start) + 1
-        unpack_type(io, read(io, UInt8), k, Skip{K})
-        value_position = (position(io) - start) + 1
+    positions = Dict{K,UnitRange{UInt64}}()
+    for _ in 1:n
+        key = unpack_type(io, read(io, UInt8), k, K)
+        value_start = (position(io) - start) + 1
         unpack_type(io, read(io, UInt8), v, Skip{V})
-        positions[i] = key_position => value_position
+        positions[key] = value_start:(position(io) - start)
     end
     bytes = view(io.data, (start + 1):position(io))
     return MapView{K,V}(bytes, positions)

@@ -110,6 +110,16 @@ for v in values(dict)
     T = Dict{Int,typeof(v)}
     M = MsgPack2.MapView{Int,typeof(v)}
     d = Dict(zip(1:9, fill(v, 9)))
+    m = unpack(pack(d), M)
+    @test length(m) == length(d)
+    for i in 1:length(d)
+        @test m[i] == d[i]
+        @test get(() -> nothing, m, i + 1) == get(() -> nothing, d, i + 1)
+        @test get(m, i + 1, nothing) == get(d, i + 1, nothing)
+    end
+    @test Set(collect(m)) == Set(collect(d))
+    @test Set(collect(keys(m))) == Set(collect(keys(d)))
+    @test Set(collect(values(m))) == Set(collect(values(d)))
     @test can_round_trip(d, T)
     @test can_round_trip(d, M)
     d = Dict(zip(1:(typemax(UInt8) - 1), fill(v, typemax(UInt8) - 1)))
