@@ -290,7 +290,7 @@ msgpack_type(::Type{<:AbstractString}) = StringType()
 msgpack_type(::Type{Symbol}) = StringType()
 msgpack_type(::Type{Char}) = StringType()
 
-to_msgpack(::StringType, x::Char) = x
+to_msgpack(::StringType, x::Char) = string(x)
 to_msgpack(::StringType, x::Symbol) = _symbol_to_string(x)
 
 from_msgpack(::Type{Char}, x::AbstractString) = first(x)
@@ -355,10 +355,4 @@ from_msgpack(::Type{Symbol}, x::PointerString) = ccall(:jl_symbol_n, Ref{Symbol}
 from_msgpack(::Type{PointerString}, x::PointerString) = x
 from_msgpack(S::Type, x::PointerString) = from_msgpack(S, unsafe_string(x.ptr, x.len))
 
-function _symbol_to_string(x::Symbol)
-    ptr = Base.unsafe_convert(Ptr{UInt8}, x)
-    for len in 0:typemax(UInt32)
-        unsafe_load(ptr + len) === 0x00 && return PointerString(ptr, len)
-    end
-    return nothing
-end
+_symbol_to_string(x::Symbol) = PointerString(Base.unsafe_convert(Ptr{UInt8}, x), sizeof(x))

@@ -167,7 +167,7 @@ end
 
 function pack_type(io, t::StringType, x)
     x = to_msgpack(t, x)
-    n = sizeof(x)
+    n = x isa PointerString ? x.len : sizeof(x)
     n <= 31 && return pack_format(io, StrFixFormat(magic_byte_min(StrFixFormat) | UInt8(n)), x)
     n <= typemax(UInt8) && return pack_format(io, Str8Format(), x)
     n <= typemax(UInt16) && return pack_format(io, Str16Format(), x)

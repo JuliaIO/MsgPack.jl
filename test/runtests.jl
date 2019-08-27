@@ -99,5 +99,36 @@ for v in values(dict)
     @test can_round_trip(Dict(zip(1:(typemax(UInt16) + 1), fill(v, typemax(UInt16) + 1))), T)
 end
 
-# TODO: ImmutableStructType
+# ImmutableStructType
+
+struct Bar{T}
+    a::T
+    b::T
+end
+
+Base.:(==)(a::Bar, b::Bar) = a.a == b.a && a.b == b.b
+
+MsgPack2.construct(::Type{T}, args...) where {T<:Bar} = T(promote(args...)...)
+
+MsgPack2.msgpack_type(::Type{<:Bar}) = MsgPack2.ImmutableStructType()
+
+struct Foo{T,S}
+    x::Union{Nothing,T}
+    y::Vector{S}
+    z::Bar{T}
+end
+
+Base.:(==)(a::Foo, b::Foo) = a.x == b.x && a.y == b.y && a.z == b.z
+
+MsgPack2.msgpack_type(::Type{<:Foo}) = MsgPack2.ImmutableStructType()
+
+foo = Foo{Int,String}(nothing, String["abc", join(rand(Char,typemax(UInt16)))],
+                      Bar(rand(Int), rand(Int)))
+foo_dict = Dict("x" => foo.x, "y" => foo.y, "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
+@test can_round_trip(foo, typeof(foo), foo, foo_dict)
+
+foo = Foo{Float64,Char}(rand(), rand('a':'z', 100), Bar(rand(), rand()))
+foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
+@test can_round_trip(foo, typeof(foo), foo, foo_dict)
+
 # TODO: MutableStructType
