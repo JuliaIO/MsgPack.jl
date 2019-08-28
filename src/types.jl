@@ -219,7 +219,7 @@ msgpack_type(::Type) = AnyType()
     to_msgpack(::M, value_to_serialize::T) where {M<:AbstractMsgPackType,T}
 
 Return an "`M`-compatible" representation of `value_to_serialize` (for compatibility
-definitions, see the docstrings for subtypes of `AbstractMsgPackType).
+definitions, see the docstrings for subtypes of [`AbstractMsgPackType`](@ref)).
 
 By default, `to_msgpack` simply returns `value_to_serialize` directly.
 
