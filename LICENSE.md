@@ -1,6 +1,6 @@
-The MsgPack2.jl package is licensed under the MIT "Expat" License:
+The MsgPack.jl package is licensed under the MIT "Expat" License:
 
-> Copyright (c) 2019: Beacon Biosignals and other contributors.
+> Copyright (c) 2019: Jarrett Revels, Sean Billig and other contributors.
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal

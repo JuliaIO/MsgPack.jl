@@ -1,4 +1,4 @@
-using Test, MsgPack2, Serialization
+using Test, MsgPack, Serialization
 
 function can_round_trip(value, T,
                         expected_typed_output = value,
@@ -57,9 +57,9 @@ end
 
 Base.:(==)(a::ByteVec, b::ByteVec) = a.bytes == b.bytes
 
-MsgPack2.msgpack_type(::Type{ByteVec}) = MsgPack2.BinaryType()
-MsgPack2.to_msgpack(::MsgPack2.BinaryType, x::ByteVec) = x.bytes
-MsgPack2.from_msgpack(::Type{ByteVec}, bytes::Vector{UInt8}) = ByteVec(bytes)
+MsgPack.msgpack_type(::Type{ByteVec}) = MsgPack.BinaryType()
+MsgPack.to_msgpack(::MsgPack.BinaryType, x::ByteVec) = x.bytes
+MsgPack.from_msgpack(::Type{ByteVec}, bytes::Vector{UInt8}) = ByteVec(bytes)
 
 bytes = rand(UInt8, typemax(UInt8))
 @test can_round_trip(ByteVec(bytes), ByteVec, ByteVec(bytes), bytes)
@@ -80,7 +80,7 @@ push!(arr, deepcopy(arr))
 @test can_round_trip(arr, Vector{Any})
 for x in arr
     T = Vector{typeof(x)}
-    A = MsgPack2.ArrayView{typeof(x)}
+    A = MsgPack.ArrayView{typeof(x)}
     a = fill(x, 9)
     @test can_round_trip(a, T)
     @test can_round_trip(a, A)
@@ -108,7 +108,7 @@ dict = Dict(zip(arr, reverse(arr)))
 @test can_round_trip(dict, Dict{Any,Any})
 for v in values(dict)
     T = Dict{Int,typeof(v)}
-    M = MsgPack2.MapView{Int,typeof(v)}
+    M = MsgPack.MapView{Int,typeof(v)}
     d = Dict(zip(1:9, fill(v, 9)))
     m = unpack(pack(d), M)
     @test length(m) == length(d)
@@ -138,7 +138,7 @@ namedtup_dict = Dict((string(k) => v for (k, v) in pairs(namedtup))...)
 @test can_round_trip(namedtup, NamedTuple{keys(namedtup),<:Tuple}, namedtup, namedtup_dict)
 
 arr = [dict]
-@test can_round_trip(arr, MsgPack2.ArrayView{MsgPack2.MapView{Any,Any}})
+@test can_round_trip(arr, MsgPack.ArrayView{MsgPack.MapView{Any,Any}})
 
 # ImmutableStructType
 
@@ -149,9 +149,9 @@ end
 
 Base.:(==)(a::Bar, b::Bar) = a.a == b.a && a.b == b.b
 
-MsgPack2.construct(::Type{T}, args...) where {T<:Bar} = T(promote(args...)...)
+MsgPack.construct(::Type{T}, args...) where {T<:Bar} = T(promote(args...)...)
 
-MsgPack2.msgpack_type(::Type{<:Bar}) = MsgPack2.ImmutableStructType()
+MsgPack.msgpack_type(::Type{<:Bar}) = MsgPack.ImmutableStructType()
 
 struct Foo{T,S}
     x::Union{Nothing,T}
@@ -161,7 +161,7 @@ end
 
 Base.:(==)(a::Foo, b::Foo) = a.x == b.x && a.y == b.y && a.z == b.z
 
-MsgPack2.msgpack_type(::Type{<:Foo}) = MsgPack2.ImmutableStructType()
+MsgPack.msgpack_type(::Type{<:Foo}) = MsgPack.ImmutableStructType()
 
 foo = Foo{Int,String}(nothing, String["abc", join(rand(Char,typemax(UInt16)))],
                       Bar(rand(Int), rand(Int)))
@@ -173,7 +173,7 @@ foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
 
 arr = [foo, foo]
-@test can_round_trip(arr, MsgPack2.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
+@test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
 
 # MutableStructType
 
@@ -185,7 +185,7 @@ end
 
 Base.:(==)(a::MBar, b::MBar) = a.a == b.a && a.b == b.b
 
-MsgPack2.msgpack_type(::Type{<:MBar}) = MsgPack2.MutableStructType()
+MsgPack.msgpack_type(::Type{<:MBar}) = MsgPack.MutableStructType()
 
 mutable struct MFoo{T,S}
     x::Union{Nothing,T}
@@ -196,7 +196,7 @@ end
 
 Base.:(==)(a::MFoo, b::MFoo) = a.x == b.x && a.y == b.y && a.z == b.z
 
-MsgPack2.msgpack_type(::Type{<:MFoo}) = MsgPack2.MutableStructType()
+MsgPack.msgpack_type(::Type{<:MFoo}) = MsgPack.MutableStructType()
 
 foo = MFoo{Int,String}()
 foo.x = nothing
@@ -213,40 +213,40 @@ foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
 
 arr = [foo, foo]
-@test can_round_trip(arr, MsgPack2.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
+@test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
 
 # ExtensionType
 
 type = 123
 data = (io = IOBuffer(); serialize(io, arr); take!(io))
-@test MsgPack2.Ext(type, data) === MsgPack2.Extension(type, data)
-ext = MsgPack2.extserialize(type, arr)
+@test MsgPack.Ext(type, data) === MsgPack.Extension(type, data)
+ext = MsgPack.extserialize(type, arr)
 @test ext.type == type
 @test ext.data == data
-ext_type, ext_arr = MsgPack2.extdeserialize(ext)
+ext_type, ext_arr = MsgPack.extdeserialize(ext)
 @test ext_type == ext.type
 @test ext_arr == arr
 
-ext = MsgPack2.Extension(4, [0xbb])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(-32, [0x56, 0x8d])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(-123, [0x80, 0x7c, 0x8b, 0xf8])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(111, [0x04, 0x16, 0x94, 0x13, 0x0a, 0x7d, 0x6f, 0x0c])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(79, [0x00, 0x30, 0xd5, 0x64, 0x0f, 0x8d, 0x92, 0x90,
+ext = MsgPack.Extension(4, [0xbb])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(-32, [0x56, 0x8d])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(-123, [0x80, 0x7c, 0x8b, 0xf8])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(111, [0x04, 0x16, 0x94, 0x13, 0x0a, 0x7d, 0x6f, 0x0c])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(79, [0x00, 0x30, 0xd5, 0x64, 0x0f, 0x8d, 0x92, 0x90,
                               0x98, 0x99, 0x14, 0x57, 0x0e, 0x8d, 0xf1, 0x3a])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(-118, [0xc7, 0x00, 0x8a])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(50, [0x62, 0x4c, 0x7c, 0x0f, 0x86, 0x04])
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(78, rand(UInt8, typemax(UInt8) - 1))
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(32, rand(UInt8, typemax(UInt8) + 1))
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(-14, rand(UInt8, typemax(UInt16) + 1))
-@test can_round_trip(ext, MsgPack2.Extension)
-ext = MsgPack2.Extension(84, UInt8[])
-@test can_round_trip(ext, MsgPack2.Extension)
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(-118, [0xc7, 0x00, 0x8a])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(50, [0x62, 0x4c, 0x7c, 0x0f, 0x86, 0x04])
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(78, rand(UInt8, typemax(UInt8) - 1))
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(32, rand(UInt8, typemax(UInt8) + 1))
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(-14, rand(UInt8, typemax(UInt16) + 1))
+@test can_round_trip(ext, MsgPack.Extension)
+ext = MsgPack.Extension(84, UInt8[])
+@test can_round_trip(ext, MsgPack.Extension)

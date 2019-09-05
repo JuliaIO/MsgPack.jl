@@ -1,9 +1,9 @@
 # API Documentation
 
-Below is the documentation for all MsgPack2 API functions. For information on MsgPack2, please see [the package's README](https://github.com/beacon-biosignals/MsgPack2.jl).
+Below is the documentation for all MsgPack API functions. For information on MsgPack, please see [the package's README](https://github.com/JuliaIO/MsgPack.jl).
 
 ```@meta
-CurrentModule = MsgPack2
+CurrentModule = MsgPack
 ```
 
 ## Basic Serialization/Deserialization
@@ -16,9 +16,9 @@ pack
 ## Julia <--> MessagePack Conversion
 
 ```@docs
-MsgPack2.msgpack_type
-MsgPack2.to_msgpack
-MsgPack2.from_msgpack
+MsgPack.msgpack_type
+MsgPack.to_msgpack
+MsgPack.from_msgpack
 ```
 
 ## Julia <--> MessagePack Interface Types
@@ -42,14 +42,14 @@ MutableStructType
 ## View Types
 
 ```@docs
-MsgPack2.ArrayView
-MsgPack2.MapView
+MsgPack.ArrayView
+MsgPack.MapView
 ```
 
 ## MessagePack Extension Functionality
 
 ```@docs
-MsgPack2.Extension
-MsgPack2.extserialize
-MsgPack2.extdeserialize
+MsgPack.Extension
+MsgPack.extserialize
+MsgPack.extdeserialize
 ```

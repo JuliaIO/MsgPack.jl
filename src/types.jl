@@ -219,7 +219,7 @@ msgpack_type(::Type{UUID}) = StringType()
 
 If this method is overloaded such that `msgpack_type(T) === M()`, then `to_msgpack(::M, ::T)`
 and `from_msgpack(::Type{T}, x)` should also be overloaded to handle conversion of `T`
-instances to/from MsgPack2-compatible types.
+instances to/from MsgPack-compatible types.
 
 By default, this method returns `AnyType()`. While this fallback method need not be overloaded to
 support deserialization of `T` instances via `unpack`, `msgpack_type(T)` must be overloaded to
@@ -366,7 +366,7 @@ Base.:(==)(a::Extension, b::Extension) = a.type == b.type && a.data == b.data
 
 msgpack_type(::Type{Extension}) = ExtensionType()
 
-@deprecate Ext(type, data) MsgPack2.Extension(type, data)
+@deprecate Ext(type, data) MsgPack.Extension(type, data)
 
 """
     extserialize(type, x)
@@ -383,9 +383,9 @@ julia> struct Point{T}
 
 julia> val = [Point(rand(), rand()) for _ in 1:100];
 
-julia> bytes = MsgPack2.pack(MsgPack2.extserialize(123, x));
+julia> bytes = MsgPack.pack(MsgPack.extserialize(123, x));
 
-julia> type, new_val = MsgPack2.extdeserialize(MsgPack2.unpack(bytes));
+julia> type, new_val = MsgPack.extdeserialize(MsgPack.unpack(bytes));
 
 julia> type == 123
 true

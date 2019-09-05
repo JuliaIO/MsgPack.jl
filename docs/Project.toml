@@ -1,6 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-MsgPack2 = "f3bf5812-ae52-11e9-182b-097c550858cf"
+MsgPack = "f3bf5812-ae52-11e9-182b-097c550858cf"
 
 [compat]
 Documenter = "~0.22"

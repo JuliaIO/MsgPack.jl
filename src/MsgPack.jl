@@ -1,4 +1,4 @@
-module MsgPack2
+module MsgPack
 
 using Serialization
 

@@ -1,21 +1,18 @@
-# MsgPack2.jl
+# MsgPack.jl
 
-[![Build Status](https://travis-ci.com/beacon-biosignals/MsgPack2.jl.svg?token=Jbjm3zfgVHsfbKqsz3ki&branch=master)](https://travis-ci.com/beacon-biosignals/MsgPack2.jl)
-[![codecov](https://codecov.io/gh/beacon-biosignals/MsgPack2.jl/branch/master/graph/badge.svg?token=D0bcI0Rtsw)](https://codecov.io/gh/beacon-biosignals/MsgPack2.jl)
+[![Build Status](https://travis-ci.com/JuliaIO/MsgPack.jl.svg?token=Jbjm3zfgVHsfbKqsz3ki&branch=master)](https://travis-ci.com/JuliaIO/MsgPack.jl)
+[![codecov](https://codecov.io/gh/JuliaIO/MsgPack.jl/branch/master/graph/badge.svg?token=D0bcI0Rtsw)](https://codecov.io/gh/JuliaIO/MsgPack.jl)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/stable/)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://beacon-biosignals.github.io/MsgPack2.jl/latest/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaIO.github.io/MsgPack.jl/stable/)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://JuliaIO.github.io/MsgPack.jl/latest/)
 
-This package is a MessagePack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl) and the original [MsgPack.jl](https://github.com/JuliaIO/MsgPack.jl).
-
-This package is currently unregistered, as [it might just be moved to replace the original MsgPack.jl](https://github.com/JuliaIO/MsgPack.jl/issues/29).
-
-Currently, this package supports:
+MsgPack.jl is a MessagePack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl). This package supports:
 
 - (de)serialization of Julia values to/from MessagePack (see `pack` and `unpack`)
 - overloadable pre-(de)serialization transformations (see `from_msgpack` and `to_msgpack`)
 - automatic type construction/destruction (see `msgpack_type`, `ImmutableStructType`, and `MutableStructType`)
 - some basic immutable "views" over MsgPack-formatted byte buffers (see `ArrayView`, `MapView`).
+- native `Serialization.serialize` support via MessagePack Extensions (see `Extension`, `extserialize`, and `extdeserialize`)
 
 ## `pack`/`unpack`
 
@@ -48,7 +45,7 @@ julia> unpack(seekstart(io))
 
 ## Translating between Julia and MessagePack types
 
-By default, MsgPack2 defines (de)serialization between the following Julia and MessagePack types:
+By default, MsgPack defines (de)serialization between the following Julia and MessagePack types:
 
 | MessagePack Type | `AbstractMsgPackType` Subtype | Julia Types                                                              |
 |------------------|-------------------------------|--------------------------------------------------------------------------|
@@ -60,20 +57,21 @@ By default, MsgPack2 defines (de)serialization between the following Julia and M
 | Array            | `ArrayType`                   | `AbstractArray`, `AbstractSet`, `Tuple`                                  |
 | Map              | `MapType`                     | `AbstractDict`, `NamedTuple`                                             |
 | Binary           | `BinaryType`                  | (no defaults)                                                            |
+| Extension        | `ExtensionType`               | (no defaults)                                                            |
 
 To support additional Julia types, we can define that type's "translation" to its corresponding `AbstractMsgPackType` via the following methods:
 
 ```julia
-julia> using MsgPack2, UUIDs
+julia> using MsgPack, UUIDs
 
 # declare `UUID`'s correspondence to the MessagePack String type
-julia> MsgPack2.msgpack_type(::Type{UUID}) = MsgPack2.StringType()
+julia> MsgPack.msgpack_type(::Type{UUID}) = MsgPack.StringType()
 
 # convert UUIDs to a MessagePack String-compatible representation for serialization
-julia> MsgPack2.to_msgpack(::MsgPack2.StringType, uuid::UUID) = string(uuid)
+julia> MsgPack.to_msgpack(::MsgPack.StringType, uuid::UUID) = string(uuid)
 
 # convert values deserialized as MessagePack Strings to UUIDs
-julia> MsgPack2.from_msgpack(::Type{UUID}, uuid::AbstractString) = UUID(uuid)
+julia> MsgPack.from_msgpack(::Type{UUID}, uuid::AbstractString) = UUID(uuid)
 
 julia> unpack(pack(uuid4()))
 "df416048-e513-41c5-aa49-32623d5d7e1f"
@@ -86,12 +84,12 @@ Note that each subtype of `AbstractMsgPackType` makes its own assumptions about 
 
 ## Automatic `struct` (de)serialization
 
-MsgPack2 substantially copies the approach taken by [JSON3.jl](https://github.com/quinnj/JSON3.jl) to provide an interface that facilitates automatic, performant (de)serialization of MessagePack Maps to/from Julia `struct`s. This interface supports two different possibilities: a slower approach that doesn't depend on field ordering during deserialization, and a faster approach that does.
+MsgPack substantially copies the approach taken by [JSON3.jl](https://github.com/quinnj/JSON3.jl) to provide an interface that facilitates automatic, performant (de)serialization of MessagePack Maps to/from Julia `struct`s. This interface supports two different possibilities: a slower approach that doesn't depend on field ordering during deserialization, and a faster approach that does.
 
 The slower (but more robust/flexible) approach looks like the following:
 
 ```julia
-julia> using MsgPack2
+julia> using MsgPack
 
 julia> mutable struct MyMessage
            a::Int
@@ -101,7 +99,7 @@ julia> mutable struct MyMessage
            MyMessage(a, b, c) = new(a, b, c)
        end
 
-julia> MsgPack2.msgpack_type(::Type{MyMessage}) = MsgPack2.MutableStructType()
+julia> MsgPack.msgpack_type(::Type{MyMessage}) = MsgPack.MutableStructType()
 
 julia> messages = [MyMessage(rand(Int), join(rand('a':'z', 10)), rand(Bool)) for _ in 1:3]
 3-element Array{MyMessage,1}:
@@ -119,7 +117,7 @@ julia> unpack(pack(messages), Vector{MyMessage})
 The faster (but heavily constrained) approach looks much the same:
 
 ```julia
-julia> using MsgPack2
+julia> using MsgPack
 
 julia> struct MyImmutableMessage
            a::Int
@@ -127,7 +125,7 @@ julia> struct MyImmutableMessage
            c::Bool
        end
 
-julia> MsgPack2.msgpack_type(::Type{MyImmutableMessage}) = MsgPack2.ImmutableStructType()
+julia> MsgPack.msgpack_type(::Type{MyImmutableMessage}) = MsgPack.ImmutableStructType()
 
 julia> imessages = [MyImmutableMessage(rand(Int), join(rand('a':'z', 10)), rand(Bool)) for _ in 1:3]
 3-element Array{MyImmutableMessage,1}:
@@ -148,7 +146,7 @@ For additional details, see the docstrings for `MutableStructType` and `Immutabl
 
 ## Immutable, lazy Julia views over MessagePack bytes
 
-Often, one will want to delay full deserialization of a MessagePack collection, and instead only deserialize elements upon access. To facilitate this approach, MsgPack2 provides the `ArrayView` and `MapView` types. Reusing the toy `MyMessage` from the earlier example:
+Often, one will want to delay full deserialization of a MessagePack collection, and instead only deserialize elements upon access. To facilitate this approach, MsgPack provides the `ArrayView` and `MapView` types. Reusing the toy `MyMessage` from the earlier example:
 
 ```julia
 julia> using BenchmarkTools
@@ -160,7 +158,7 @@ julia> @time x = unpack(bytes, Vector{MyMessage});
   3.547294 seconds (20.00 M allocations: 686.646 MiB, 13.42% gc time)
 
 # scan bytes to tag object positions, but don't fully deserialize
-julia> @time v = unpack(bytes, MsgPack2.ArrayView{MyMessage});
+julia> @time v = unpack(bytes, MsgPack.ArrayView{MyMessage});
   0.462374 seconds (14 allocations: 76.295 MiB)
 
 # has normal `Vector` access performance, since it's a normal `Vector`
