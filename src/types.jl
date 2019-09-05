@@ -17,6 +17,7 @@ The subtypes of `AbstractMsgPackType` are:
 - [`BinaryType`](@ref)
 - [`ArrayType`](@ref)
 - [`MapType`](@ref)
+- [`ExtensionType`](@ref)
 - [`AnyType`](@ref)
 - [`ImmutableStructType`](@ref)
 - [`MutableStructType`](@ref)
@@ -137,6 +138,20 @@ the Julia `AbstractDict` interface, and/or must support:
 - `from_msgpack(::Type{T}, ::Dict)::T`
 """
 struct MapType <: AbstractMsgPackType end
+
+"""
+    ExtensionType <: AbstractMsgPackType
+
+A Julia type corresponding to the MessagePack Extension type.
+
+If `msgpack_type(T)` is defined to return `ExtensionType()`, then `T` must support:
+
+- `to_msgpack(::ExtensionType, ::T)::Extension`
+- `from_msgpack(::Type{T}, ::Extension)::T`
+
+See also: [`Extension`](@ref)
+"""
+struct ExtensionType <: AbstractMsgPackType end
 
 """
     AnyType <: AbstractMsgPackType
@@ -327,6 +342,83 @@ end
     end
     return Expr(:tuple, fields...)
 end
+
+#####
+##### `Extension`
+#####
+
+"""
+    struct Extension
+        type::Int8
+        data::Vector{UInt8}
+    end
+
+A wrapper for bytes formatted to the MessagePack Extension type specification.
+
+See also: [`extserialize`](@ref), [`extdeserialize`](@ref)
+"""
+struct Extension
+    type::Int8
+    data::Vector{UInt8}
+end
+
+Base.:(==)(a::Extension, b::Extension) = a.type == b.type && a.data == b.data
+
+msgpack_type(::Type{Extension}) = ExtensionType()
+
+@deprecate Ext(type, data) MsgPack2.Extension(type, data)
+
+"""
+    extserialize(type, x)
+
+Return `Extension(type, data)` where `data` is the result of calling Julia's
+built-in `serialize` function on `x`, facilitating direct serialization Julia
+values to MessagePack format:
+
+```
+julia> struct Point{T}
+           x::T
+           y::T
+       end
+
+julia> val = [Point(rand(), rand()) for _ in 1:100];
+
+julia> bytes = MsgPack2.pack(MsgPack2.extserialize(123, x));
+
+julia> type, new_val = MsgPack2.extdeserialize(MsgPack2.unpack(bytes));
+
+julia> type == 123
+true
+
+julia> new_val == val
+true
+```
+
+Note that `extserialize`/[`extdeserialize`](@ref) are subject to the same caveat
+as Julia's built-in `serialize`/`deserialize` functions: "In general, this
+process will not work if the reading and writing are done by different versions
+of Julia, or an instance of Julia with a different system image.".
+
+See also: [`Extension`](@ref), [`extdeserialize`](@ref)
+"""
+function extserialize(type, x)
+    io = IOBuffer()
+    serialize(io, x)
+    return Extension(type, take!(io))
+end
+
+"""
+    extdeserialize(x::Extension)
+
+Return `(x.type, value)` where `value` is the result of calling Julia's built-in
+`deserialize` function on `x.data`.
+
+This function is meant to be used in conjuction with [`extserialize`](@ref); see
+that function's docstring for more details.
+
+See also: [`Extension`](@ref), [`extserialize`](@ref)
+"""
+extdeserialize(x::Extension) = (x.type, deserialize(IOBuffer(x.data)))
 
 #####
 ##### `Skip`

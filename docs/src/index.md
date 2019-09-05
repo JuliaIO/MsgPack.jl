@@ -33,6 +33,7 @@ StringType
 BinaryType
 ArrayType
 MapType
+ExtensionType
 AnyType
 ImmutableStructType
 MutableStructType
@@ -43,4 +44,12 @@ MutableStructType
 ```@docs
 MsgPack2.ArrayView
 MsgPack2.MapView
+```
+
+## MessagePack Extension Functionality
+
+```@docs
+MsgPack2.Extension
+MsgPack2.extserialize
+MsgPack2.extdeserialize
 ```

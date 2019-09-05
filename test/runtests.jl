@@ -1,4 +1,4 @@
-using Test, MsgPack2
+using Test, MsgPack2, Serialization
 
 function can_round_trip(value, T,
                         expected_typed_output = value,
@@ -214,3 +214,39 @@ foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.
 
 arr = [foo, foo]
 @test can_round_trip(arr, MsgPack2.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
+
+# ExtensionType
+
+type = 123
+data = (io = IOBuffer(); serialize(io, arr); take!(io))
+@test MsgPack2.Ext(type, data) === MsgPack2.Extension(type, data)
+ext = MsgPack2.extserialize(type, arr)
+@test ext.type == type
+@test ext.data == data
+ext_type, ext_arr = MsgPack2.extdeserialize(ext)
+@test ext_type == ext.type
+@test ext_arr == arr
+
+ext = MsgPack2.Extension(4, [0xbb])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(-32, [0x56, 0x8d])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(-123, [0x80, 0x7c, 0x8b, 0xf8])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(111, [0x04, 0x16, 0x94, 0x13, 0x0a, 0x7d, 0x6f, 0x0c])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(79, [0x00, 0x30, 0xd5, 0x64, 0x0f, 0x8d, 0x92, 0x90,
+                              0x98, 0x99, 0x14, 0x57, 0x0e, 0x8d, 0xf1, 0x3a])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(-118, [0xc7, 0x00, 0x8a])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(50, [0x62, 0x4c, 0x7c, 0x0f, 0x86, 0x04])
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(78, rand(UInt8, typemax(UInt8) - 1))
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(32, rand(UInt8, typemax(UInt8) + 1))
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(-14, rand(UInt8, typemax(UInt16) + 1))
+@test can_round_trip(ext, MsgPack2.Extension)
+ext = MsgPack2.Extension(84, UInt8[])
+@test can_round_trip(ext, MsgPack2.Extension)

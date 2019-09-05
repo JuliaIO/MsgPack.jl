@@ -88,6 +88,22 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
         return unpack_format(io, Map16Format(), T)
     elseif byte === magic_byte(Map32Format)
         return unpack_format(io, Map32Format(), T)
+    elseif byte === magic_byte(Ext8Format)
+        return unpack_format(io, Ext8Format(), T)
+    elseif byte === magic_byte(Ext16Format)
+        return unpack_format(io, Ext16Format(), T)
+    elseif byte === magic_byte(Ext32Format)
+        return unpack_format(io, Ext32Format(), T)
+    elseif byte === magic_byte(ExtFix1Format)
+        return unpack_format(io, ExtFix1Format(), T)
+    elseif byte === magic_byte(ExtFix2Format)
+        return unpack_format(io, ExtFix2Format(), T)
+    elseif byte === magic_byte(ExtFix4Format)
+        return unpack_format(io, ExtFix4Format(), T)
+    elseif byte === magic_byte(ExtFix8Format)
+        return unpack_format(io, ExtFix8Format(), T)
+    elseif byte === magic_byte(ExtFix16Format)
+        return unpack_format(io, ExtFix16Format(), T)
     elseif byte === magic_byte(Bin8Format)
         return unpack_format(io, Bin8Format(), T)
     elseif byte === magic_byte(Bin16Format)
@@ -475,7 +491,33 @@ end
 #####
 ##### `ExtensionType`
 #####
-# TODO
+
+function unpack_type(io, byte, t::ExtensionType, ::Type{T}) where {T}
+    byte === magic_byte(ExtFix1Format) && return unpack_format(io, ExtFix1Format(), T)
+    byte === magic_byte(ExtFix2Format) && return unpack_format(io, ExtFix2Format(), T)
+    byte === magic_byte(ExtFix4Format) && return unpack_format(io, ExtFix4Format(), T)
+    byte === magic_byte(ExtFix8Format) && return unpack_format(io, ExtFix8Format(), T)
+    byte === magic_byte(ExtFix16Format) && return unpack_format(io, ExtFix16Format(), T)
+    byte === magic_byte(Ext8Format) && return unpack_format(io, Ext8Format(), T)
+    byte === magic_byte(Ext16Format) && return unpack_format(io, Ext16Format(), T)
+    byte === magic_byte(Ext32Format) && return unpack_format(io, Ext32Format(), T)
+    invalid_unpack(io, byte, t, T)
+end
+
+unpack_format(io, ::ExtFix1Format, ::Type{T}) where {T} = _unpack_extension(io, 1, T)
+unpack_format(io, ::ExtFix2Format, ::Type{T}) where {T} = _unpack_extension(io, 2, T)
+unpack_format(io, ::ExtFix4Format, ::Type{T}) where {T} = _unpack_extension(io, 4, T)
+unpack_format(io, ::ExtFix8Format, ::Type{T}) where {T} = _unpack_extension(io, 8, T)
+unpack_format(io, ::ExtFix16Format, ::Type{T}) where {T} = _unpack_extension(io, 16, T)
+unpack_format(io, ::Ext8Format, ::Type{T}) where {T} = _unpack_extension(io, read(io, UInt8), T)
+unpack_format(io, ::Ext16Format, ::Type{T}) where {T} = _unpack_extension(io, ntoh(read(io, UInt16)), T)
+unpack_format(io, ::Ext32Format, ::Type{T}) where {T} = _unpack_extension(io, ntoh(read(io, UInt32)), T)
+
+function _unpack_extension(io, n, ::Type{T}) where {T}
+    type = read(io, Int8)
+    data = read(io, n)
+    return from_msgpack(T, Extension(type, data))
+end
 
 #####
 ##### utilities

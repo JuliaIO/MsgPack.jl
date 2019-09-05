@@ -307,7 +307,49 @@ end
 #####
 ##### `ExtensionType`
 #####
-# TODO
+
+function pack_type(io, t::ExtensionType, x)
+    x = to_msgpack(t, x)::Extension
+    n = length(x.data)
+    n == 1 && return pack_format(io, ExtFix1Format(), x)
+    n == 2 && return pack_format(io, ExtFix2Format(), x)
+    n == 4 && return pack_format(io, ExtFix4Format(), x)
+    n == 8 && return pack_format(io, ExtFix8Format(), x)
+    n == 16 && return pack_format(io, ExtFix16Format(), x)
+    n <= typemax(UInt8) && return pack_format(io, Ext8Format(), x)
+    n <= typemax(UInt16) && return pack_format(io, Ext16Format(), x)
+    n <= typemax(UInt32) && return pack_format(io, Ext32Format(), x)
+    invalid_pack(io, t, x)
+end
+
+const ExtFixFormat = Union{ExtFix1Format,ExtFix2Format,ExtFix4Format,ExtFix8Format,ExtFix16Format}
+
+function pack_format(io, ::F, x::Extension) where {F<:ExtFixFormat}
+    write(io, magic_byte(F))
+    write(io, x.type)
+    write(io, x.data)
+end
+
+function pack_format(io, ::Ext8Format, x::Extension)
+    write(io, magic_byte(Ext8Format))
+    write(io, UInt8(length(x.data)))
+    write(io, x.type)
+    write(io, x.data)
+end
+
+function pack_format(io, ::Ext16Format, x::Extension)
+    write(io, magic_byte(Ext16Format))
+    write(io, hton(UInt16(length(x.data))))
+    write(io, x.type)
+    write(io, x.data)
+end
+
+function pack_format(io, ::Ext32Format, x::Extension)
+    write(io, magic_byte(Ext32Format))
+    write(io, hton(UInt32(length(x.data))))
+    write(io, x.type)
+    write(io, x.data)
+end
 
 #####
 ##### utilities

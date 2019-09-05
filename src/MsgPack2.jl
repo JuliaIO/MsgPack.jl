@@ -1,5 +1,7 @@
 module MsgPack2
 
+using Serialization
+
 export pack, unpack
 
 include("types.jl")
