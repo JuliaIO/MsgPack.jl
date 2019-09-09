@@ -113,7 +113,7 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
         return unpack_format(io, IntFixNegativeFormat(reinterpret(Int8, byte)), T)
     end
-    invalid_unpack(io, byte, AnyType(), T)
+    invalid_unpack(io, byte, AnyType(), T) # should be unreachable, but ensures error is thrown if reached
 end
 
 #####
@@ -224,9 +224,8 @@ function unpack_type(io, byte, t::IntegerType, ::Type{T}) where {T}
         return unpack_format(io, Int64Format(), T)
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
         return unpack_format(io, IntFixNegativeFormat(reinterpret(Int8, byte)), T)
-    else
-        invalid_unpack(io, byte, t, T)
     end
+    invalid_unpack(io, byte, t, T) # should be unreachable, but ensures error is thrown if reached
 end
 
 unpack_format(io, f::IntFixPositiveFormat, ::Type{T}) where {T} = from_msgpack(T, UInt8(f.byte))
