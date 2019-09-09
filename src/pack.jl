@@ -17,13 +17,13 @@ end
 """
     pack(io::IO, x)
 
-Like `pack(x)`, but write the resulting bytes to `io`.
+Like `pack(x)`, but write the resulting bytes to `io`. Returns `nothing`.
 
 See also: [`unpack`](@ref)
 """
 function pack(io::IO, x)
     pack_type(io, msgpack_type(typeof(x)), x)
-    return io
+    return nothing
 end
 
 #####
