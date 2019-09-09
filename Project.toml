@@ -1,7 +1,7 @@
 name = "MsgPack"
 uuid = "f3bf5812-ae52-11e9-182b-097c550858cf"
 authors = ["Jarrett Revels <jarrettrevels@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
