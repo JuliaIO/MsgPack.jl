@@ -1,6 +1,6 @@
 # MsgPack.jl
 
-[![Build Status](https://travis-ci.com/JuliaIO/MsgPack.jl.svg?token=Jbjm3zfgVHsfbKqsz3ki&branch=master)](https://travis-ci.com/JuliaIO/MsgPack.jl)
+[![Build Status](https://travis-ci.org/JuliaIO/MsgPack.jl.svg?branch=master)](https://travis-ci.org/JuliaIO/MsgPack.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4/branch/master?svg=true)](https://ci.appveyor.com/project/kmsquire/msgpack-jl/branch/master)
 [![codecov](https://codecov.io/gh/JuliaIO/MsgPack.jl/branch/master/graph/badge.svg?token=D0bcI0Rtsw)](https://codecov.io/gh/JuliaIO/MsgPack.jl)
 
