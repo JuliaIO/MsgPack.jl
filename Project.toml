@@ -1,6 +1,5 @@
 name = "MsgPack"
 uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
-authors = ["Jarrett Revels <jarrettrevels@gmail.com>"]
 version = "1.0.0"
 
 [deps]
