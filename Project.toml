@@ -1,9 +1,13 @@
 name = "MsgPack"
-uuid = "4f058140-9cb3-11e8-3a24-f18bc08013ca"
-authors = ["Kevin Squire <kevin.squire@gmail.com>"]
-version = "0.2.0"
+uuid = "f3bf5812-ae52-11e9-182b-097c550858cf"
+authors = ["Jarrett Revels <jarrettrevels@gmail.com>"]
+version = "1.0.0"
 
 [deps]
-Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
