@@ -112,10 +112,8 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
         return unpack_format(io, Bin32Format(), T)
     elseif byte >= magic_byte_min(IntFixNegativeFormat)
         return unpack_format(io, IntFixNegativeFormat(reinterpret(Int8, byte)), T)
-    else
-        invalid_unpack(io, byte, AnyType(), T)
     end
-    # TODO Ext*Format
+    invalid_unpack(io, byte, AnyType(), T)
 end
 
 #####
