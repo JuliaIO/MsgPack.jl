@@ -1,5 +1,5 @@
 name = "MsgPack"
-uuid = "4f058140-9cb3-11e8-3a24-f18bc08013ca"
+uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 version = "1.0.0"
 
 [deps]
