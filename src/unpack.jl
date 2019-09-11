@@ -385,8 +385,10 @@ unpack_format(io, ::Array16Format, ::Type{T}) where {T} = _unpack_array(io, ntoh
 unpack_format(io, ::Array32Format, ::Type{T}) where {T} = _unpack_array(io, ntoh(read(io, UInt32)), T)
 unpack_format(io, f::ArrayFixFormat, ::Type{T}) where {T} = _unpack_array(io, xor(f.byte, magic_byte_min(ArrayFixFormat)), T)
 
+_eltype(T) = eltype(T)
+
 function _unpack_array(io, n, ::Type{T}) where {T}
-    E = eltype(T)
+    E = _eltype(T)
     e = msgpack_type(E)
     result = Vector{E}(undef, n)
     for i in 1:n
@@ -396,7 +398,7 @@ function _unpack_array(io, n, ::Type{T}) where {T}
 end
 
 function _unpack_array(io, n, ::Type{Skip{T}}) where {T}
-    E = eltype(T)
+    E = _eltype(T)
     e = msgpack_type(E)
     for _ in 1:n
         unpack_type(io, read(io, UInt8), e, Skip{E})
@@ -405,7 +407,7 @@ function _unpack_array(io, n, ::Type{Skip{T}}) where {T}
 end
 
 function _unpack_array(io::Base.GenericIOBuffer, n, ::Type{T}) where {T<:ArrayView}
-    E = eltype(T)
+    E = _eltype(T)
     e = msgpack_type(E)
     start = position(io)
     positions = Vector{UInt64}(undef, n)
