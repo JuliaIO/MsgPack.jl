@@ -118,8 +118,13 @@ struct BinaryType <: AbstractMsgPackType end
 
 A Julia type corresponding to the MessagePack Array type.
 
-If `msgpack_type(T)` is defined to return `ArrayType()`, then `T` must support
-the Julia `AbstractArray` interface, and/or must support:
+If `msgpack_type(T)` is defined to return `ArrayType()`, then `T` must support:
+
+- `length`
+- `iterate`
+- `MsgPack._eltype(T)` (falls back to `eltype(T)`)
+
+and/or must support:
 
 - `to_msgpack(::ArrayType, ::T)::AbstractArray`
 - `from_msgpack(::Type{T}, ::Vector)::T`
@@ -131,8 +136,14 @@ struct ArrayType <: AbstractMsgPackType end
 
 A Julia type corresponding to the MessagePack Map type.
 
-If `msgpack_type(T)` is defined to return `MapType()`, then `T` must support
-the Julia `AbstractDict` interface, and/or must support:
+If `msgpack_type(T)` is defined to return `MapType()`, then `T` must support:
+
+- `length`
+- `iterate`
+- `MsgPack._keytype(T)` (falls back to `keytype(T)`)
+- `MsgPack._valtype(T)` (falls back to `valtype(T)`)
+
+and/or must support:
 
 - `to_msgpack(::ArrayType, ::T)::AbstractDict`
 - `from_msgpack(::Type{T}, ::Dict)::T`
