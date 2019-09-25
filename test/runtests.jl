@@ -49,6 +49,10 @@ end
 @test can_round_trip(join(rand(Char, typemax(UInt8) + 1)), String)
 @test can_round_trip(join(rand(Char, typemax(UInt16) + 1)), String)
 
+let s = :wake_after_sleep_onset_percentage
+    @test can_round_trip(s, Symbol, s, string(s))
+end
+
 # BinaryType
 
 struct ByteVec
