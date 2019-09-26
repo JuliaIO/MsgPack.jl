@@ -450,7 +450,7 @@ struct PointerString
     len::UInt64
 end
 
-Base.length(s::PointerString) = s.len
+Base.sizeof(s::PointerString) = s.len
 
 Base.write(io::IO, s::PointerString) = Base.unsafe_write(io, s.ptr, s.len)
 
