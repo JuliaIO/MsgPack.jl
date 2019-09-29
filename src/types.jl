@@ -19,8 +19,7 @@ The subtypes of `AbstractMsgPackType` are:
 - [`MapType`](@ref)
 - [`ExtensionType`](@ref)
 - [`AnyType`](@ref)
-- [`ImmutableStructType`](@ref)
-- [`MutableStructType`](@ref)
+- [`StructType`](@ref)
 """
 abstract type AbstractMsgPackType end
 
@@ -213,6 +212,8 @@ This type is similar to [`ImmutableStructType`](@ref), but imposes fewer
 constraints at the cost of (de)serialization performance.
 """
 struct MutableStructType <: AbstractMsgPackType end
+
+struct StructType <: AbstractMsgPackType end
 
 #####
 ##### `msgpack_type`, `to_msgpack`, `from_msgpack` defaults
@@ -430,6 +431,16 @@ that function's docstring for more details.
 See also: [`Extension`](@ref), [`extserialize`](@ref)
 """
 extdeserialize(x::Extension) = (x.type, deserialize(IOBuffer(x.data)))
+
+#####
+##### `Exact`
+#####
+
+struct Exact{T} end
+
+msgpack_type(::Type{Exact{T}}) where {T} = StructType()
+
+unwrap_exact(::Type{Exact{T}}) where {T} = T
 
 #####
 ##### `Skip`

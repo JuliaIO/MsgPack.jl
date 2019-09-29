@@ -5,7 +5,7 @@ unpack(x) = unpack(x, Any)
 
 Return `unpack(IOBuffer(bytes), T)`.
 """
-unpack(bytes, ::Type{T}) where {T} = unpack(IOBuffer(bytes), T)::T
+unpack(bytes, ::Type{T}) where {T} = unpack(IOBuffer(bytes), T)
 
 """
     unpack(msgpack_byte_stream::IO, T::Type = Any)
@@ -22,7 +22,7 @@ default Julia representations, see [`AbstractMsgPackType`](@ref).
 
 See also: [`pack`](@ref)
 """
-unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, read(io, UInt8), msgpack_type(T), T)::T
+unpack(io::IO, ::Type{T}) where {T} = unpack_type(io, read(io, UInt8), msgpack_type(T), T)
 
 #####
 ##### `AnyType`
@@ -117,87 +117,96 @@ function _unpack_any(io, byte, ::Type{T}) where {T}
 end
 
 #####
-##### `ImmutableStructType`
+##### `StructType`
 #####
 
-struct Constructor{T} end
-
-(::Constructor{T})(args...) where {T} = construct(T, args...)
+struct FieldNotFound end
 
 construct(::Type{T}, args...) where {T} = T(args...)
 
-function unpack_type(io, byte, ::ImmutableStructType, ::Type{T}) where {T}
-    constructor = Constructor{T}()
-    N = fieldcount(T)
-    byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
-    Base.@nexprs 32 i -> begin
-        F_i = fieldtype(T, i)
-        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
-        x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i)
-        N == i && return Base.@ncall i constructor x
-    end
-    others = Any[]
-    for i in 33:N
-        F_i = fieldtype(T, i)
-        push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i))
-    end
-    return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
-                       x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
-                       x26, x27, x28, x29, x30, x31, x32, others...)
-end
-
-function unpack_type(io, byte, ::ImmutableStructType, ::Type{Skip{T}}) where {T}
-    N = fieldcount(T)
-    byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
-    Base.@nexprs 32 i -> begin
-        F_i = fieldtype(T, i)
-        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
-        unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
-        N == i && return Skip{T}()
-    end
-    for i in 33:N
-        F_i = fieldtype(T, i)
-        unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
-    end
-    return Skip{T}()
-end
-
-#####
-##### `MutableStructType`
-#####
-
-function unpack_type(io, byte, t::MutableStructType, ::Type{T}) where {T}
-    N = fieldcount(T)
-    if byte <= magic_byte_max(MapFixFormat)
-        pair_count = xor(byte, magic_byte_min(MapFixFormat))
-    elseif byte === magic_byte(Map16Format)
-        pair_count = ntoh(read(io, UInt16))
-    elseif byte === magic_byte(Map32Format)
-        pair_count = ntoh(read(io, UInt32))
+function unpack_type(io, byte, ::StructType, ::Type{S}) where {S}
+    if S <: Exact
+        T = unwrap_exact(S)
+        byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
+        N = fieldcount(T)
+        constructor = (args...) -> construct(T, args...)
+        Base.@nexprs 32 i -> begin
+            F_i = fieldtype(T, i)
+            unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
+            x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i)
+            N == i && return Base.@ncall i constructor x
+        end
+        others = Any[]
+        for i in 33:N
+            F_i = fieldtype(T, i)
+            push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i))
+        end
+        return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
+                           x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
+                           x26, x27, x28, x29, x30, x31, x32, others...)
     else
-        invalid_unpack(io, byte, t, T)
+        T = S
+        if byte <= magic_byte_max(MapFixFormat)
+            pair_count = xor(byte, magic_byte_min(MapFixFormat))
+        elseif byte === magic_byte(Map16Format)
+            pair_count = ntoh(read(io, UInt16))
+        elseif byte === magic_byte(Map32Format)
+            pair_count = ntoh(read(io, UInt32))
+        else
+            invalid_unpack(io, byte, t, T)
+        end
+        N = fieldcount(T)
+        fields = Any[FieldNotFound() for _ in 1:N]
+        for _ in 1:pair_count
+            key = unpack(io, Symbol) # TODO validation check?
+            Base.@nif(32,
+                      i -> i <= N && fieldname(T, i) === key,
+                      i -> setindex!(fields, unpack(io, fieldtype(T, i)), i),
+                      i -> begin
+                          is_field_still_unread = true
+                          for j in 33:N
+                              fieldname(T, j) === key || continue
+                              setindex!(fields, unpack(io, fieldtype(T, j)), j)
+                              is_field_still_unread = false
+                              break
+                          end
+                          is_field_still_unread && unpack(io)
+                      end)
+        end
+        return construct(T, fields...)
     end
-    object = T()
-    for _ in 1:pair_count
-        key = unpack(io, Symbol) # TODO validation check?
-        Base.@nif(32,
-                  i -> i <= N && fieldname(T, i) === key,
-                  i -> setfield!(object, i, unpack(io, fieldtype(T, i))),
-                  i -> begin
-                      is_field_still_unread = true
-                      for j in 33:N
-                          fieldname(T, j) === key || continue
-                          setfield!(object, j, unpack(io, fieldtype(T, j)))
-                          is_field_still_unread = false
-                          break
-                      end
-                      is_field_still_unread && unpack(io)
-                  end)
-    end
-    return object
 end
 
-unpack_type(io, byte, ::MutableStructType, ::Type{<:Skip}) = unpack_type(io, byte, MapType(), Skip{Dict{Any,Any}})
+function unpack_type(io, byte, ::StructType, ::Type{Skip{S}}) where {S}
+    if S <: Exact
+        T = unwrap_exact(S)
+        N = fieldcount(T)
+        byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
+        Base.@nexprs 32 i -> begin
+            F_i = fieldtype(T, i)
+            unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol})
+            unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
+            N == i && return Skip{T}()
+        end
+        for i in 33:N
+            F_i = fieldtype(T, i)
+            unpack_type(io, read(io, UInt8), msgpack_type(F_i), Skip{F_i})
+        end
+    else
+        unpack_type(io, byte, MapType(), Skip{Dict{Symbol,Any}})
+    end
+    return Skip{S}()
+end
+
+# NOTE: this is a deprecated code path
+function unpack_type(io, byte, ::ImmutableStructType, ::Type{T}) where {T}
+    return unpack_type(io, byte, StructType(), Exact{T})
+end
+
+# NOTE: this is a deprecated code path
+function unpack_type(io, byte, ::MutableStructType, ::Type{T}) where {T}
+    return unpack_type(io, byte, StructType(), T)
+end
 
 #####
 ##### `IntegerType`

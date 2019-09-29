@@ -46,11 +46,11 @@ function pack_type(io, t::AnyType, x)
 end
 
 #####
-##### `ImmutableStructType` + `MutableStructType`
+##### `StructType`
 #####
 
 function pack_type(io,
-                   t::Union{ImmutableStructType,MutableStructType},
+                   t::StructType,
                    x::T) where {T}
     N = fieldcount(T)
     if N <= 15
