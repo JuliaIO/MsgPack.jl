@@ -43,9 +43,9 @@ function _unpack_any(io, byte, ::Type{T}; strict) where {T}
     if byte <= magic_byte_max(IntFixPositiveFormat)
         return unpack_format(io, IntFixPositiveFormat(byte), T)
     elseif byte <= magic_byte_max(MapFixFormat)
-        return unpack_format(io, MapFixFormat(byte), T; strict=strict)
+        return unpack_format(io, MapFixFormat(byte), T, strict)
     elseif byte <= magic_byte_max(ArrayFixFormat)
-        return unpack_format(io, ArrayFixFormat(byte), T; strict=strict)
+        return unpack_format(io, ArrayFixFormat(byte), T, strict)
     elseif byte <= magic_byte_max(StrFixFormat)
         return unpack_format(io, StrFixFormat(byte), T)
     elseif byte === magic_byte(UInt8Format)
@@ -81,13 +81,13 @@ function _unpack_any(io, byte, ::Type{T}; strict) where {T}
     elseif byte === magic_byte(NilFormat)
         return unpack_format(io, NilFormat(), T)
     elseif byte === magic_byte(Array16Format)
-        return unpack_format(io, Array16Format(), T; strict=strict)
+        return unpack_format(io, Array16Format(), T, strict)
     elseif byte === magic_byte(Array32Format)
-        return unpack_format(io, Array32Format(), T; strict=strict)
+        return unpack_format(io, Array32Format(), T, strict)
     elseif byte === magic_byte(Map16Format)
-        return unpack_format(io, Map16Format(), T; strict=strict)
+        return unpack_format(io, Map16Format(), T, strict)
     elseif byte === magic_byte(Map32Format)
-        return unpack_format(io, Map32Format(), T; strict=strict)
+        return unpack_format(io, Map32Format(), T, strict)
     elseif byte === magic_byte(Ext8Format)
         return unpack_format(io, Ext8Format(), T)
     elseif byte === magic_byte(Ext16Format)
@@ -377,23 +377,23 @@ _unpack_binary(io, n, ::Type{T}) where {T<:Skip} = (skip(io, n); T())
 
 function unpack_type(io, byte, t::ArrayType, ::Type{T}; strict) where {T}
     if byte <= magic_byte_max(ArrayFixFormat)
-        return unpack_format(io, ArrayFixFormat(byte), T; strict=strict)
+        return unpack_format(io, ArrayFixFormat(byte), T, strict)
     elseif byte === magic_byte(Array16Format)
-        return unpack_format(io, Array16Format(), T; strict=strict)
+        return unpack_format(io, Array16Format(), T, strict)
     elseif byte === magic_byte(Array32Format)
-        return unpack_format(io, Array32Format(), T; strict=strict)
+        return unpack_format(io, Array32Format(), T, strict)
     else
         invalid_unpack(io, byte, t, T)
     end
 end
 
-unpack_format(io, ::Array16Format, ::Type{T}; strict) where {T} = _unpack_array(io, ntoh(read(io, UInt16)), T; strict=strict)
-unpack_format(io, ::Array32Format, ::Type{T}; strict) where {T} = _unpack_array(io, ntoh(read(io, UInt32)), T; strict=strict)
-unpack_format(io, f::ArrayFixFormat, ::Type{T}; strict) where {T} = _unpack_array(io, xor(f.byte, magic_byte_min(ArrayFixFormat)), T; strict=strict)
+unpack_format(io, ::Array16Format, ::Type{T}, strict) where {T} = _unpack_array(io, ntoh(read(io, UInt16)), T, strict)
+unpack_format(io, ::Array32Format, ::Type{T}, strict) where {T} = _unpack_array(io, ntoh(read(io, UInt32)), T, strict)
+unpack_format(io, f::ArrayFixFormat, ::Type{T}, strict) where {T} = _unpack_array(io, xor(f.byte, magic_byte_min(ArrayFixFormat)), T, strict)
 
 _eltype(T) = eltype(T)
 
-function _unpack_array(io, n, ::Type{T}; strict) where {T}
+function _unpack_array(io, n, ::Type{T}, strict) where {T}
     E = _eltype(T)
     e = msgpack_type(E)
     result = Vector{E}(undef, n)
@@ -403,7 +403,7 @@ function _unpack_array(io, n, ::Type{T}; strict) where {T}
     return from_msgpack(T, result)
 end
 
-function _unpack_array(io, n, ::Type{Skip{T}}; strict) where {T}
+function _unpack_array(io, n, ::Type{Skip{T}}, strict) where {T}
     E = _eltype(T)
     e = msgpack_type(E)
     for _ in 1:n
@@ -412,7 +412,7 @@ function _unpack_array(io, n, ::Type{Skip{T}}; strict) where {T}
     return Skip{T}()
 end
 
-function _unpack_array(io::Base.GenericIOBuffer, n, ::Type{T}; strict) where {T<:ArrayView}
+function _unpack_array(io::Base.GenericIOBuffer, n, ::Type{T}, strict) where {T<:ArrayView}
     E = _eltype(T)
     e = msgpack_type(E)
     start = position(io)
@@ -431,19 +431,19 @@ end
 
 function unpack_type(io, byte, t::MapType, ::Type{T}; strict) where {T}
     if byte <= magic_byte_max(MapFixFormat)
-        return unpack_format(io, MapFixFormat(byte), T; strict=strict)
+        return unpack_format(io, MapFixFormat(byte), T, strict)
     elseif byte === magic_byte(Map16Format)
-        return unpack_format(io, Map16Format(), T; strict=strict)
+        return unpack_format(io, Map16Format(), T, strict)
     elseif byte === magic_byte(Map32Format)
-        return unpack_format(io, Map32Format(), T; strict=strict)
+        return unpack_format(io, Map32Format(), T, strict)
     else
         invalid_unpack(io, byte, t, T)
     end
 end
 
-unpack_format(io, ::Map16Format, ::Type{T}; strict) where {T} = _unpack_map(io, ntoh(read(io, UInt16)), T; strict=strict)
-unpack_format(io, ::Map32Format, ::Type{T}; strict) where {T} = _unpack_map(io, ntoh(read(io, UInt32)), T; strict=strict)
-unpack_format(io, f::MapFixFormat, ::Type{T}; strict) where {T} = _unpack_map(io, xor(f.byte, magic_byte_min(MapFixFormat)), T; strict=strict)
+unpack_format(io, ::Map16Format, ::Type{T}, strict) where {T} = _unpack_map(io, ntoh(read(io, UInt16)), T, strict)
+unpack_format(io, ::Map32Format, ::Type{T}, strict) where {T} = _unpack_map(io, ntoh(read(io, UInt32)), T, strict)
+unpack_format(io, f::MapFixFormat, ::Type{T}, strict) where {T} = _unpack_map(io, xor(f.byte, magic_byte_min(MapFixFormat)), T, strict)
 
 _keytype(T) = Any
 _keytype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = keytype(T)
@@ -451,7 +451,7 @@ _keytype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = keytype(T)
 _valtype(T) = Any
 _valtype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = valtype(T)
 
-function _unpack_map(io, n, ::Type{T}; strict) where {T}
+function _unpack_map(io, n, ::Type{T}, strict) where {T}
     K = _keytype(T)
     k = msgpack_type(K)
     V = _valtype(T)
@@ -465,7 +465,7 @@ function _unpack_map(io, n, ::Type{T}; strict) where {T}
     return from_msgpack(T, dict)
 end
 
-function _unpack_map(io, n, ::Type{Skip{T}}; strict) where {T}
+function _unpack_map(io, n, ::Type{Skip{T}}, strict) where {T}
     K = _keytype(T)
     k = msgpack_type(K)
     V = _valtype(T)
@@ -477,7 +477,7 @@ function _unpack_map(io, n, ::Type{Skip{T}}; strict) where {T}
     return Skip{T}()
 end
 
-function _unpack_map(io::Base.GenericIOBuffer, n, ::Type{T}; strict) where {T<:MapView}
+function _unpack_map(io::Base.GenericIOBuffer, n, ::Type{T}, strict) where {T<:MapView}
     K = _keytype(T)
     k = msgpack_type(K)
     V = _valtype(T)
