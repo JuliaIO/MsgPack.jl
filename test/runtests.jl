@@ -171,16 +171,16 @@ foo = Foo{Int,String}(nothing, String["abc", join(rand(Char,typemax(UInt16)))],
                       Bar(rand(Int), rand(Int)))
 foo_dict = Dict("x" => foo.x, "y" => foo.y, "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
-@test can_round_trip(foo, MsgPack.Exact{typeof(foo)}, foo, foo_dict)
+@test can_round_trip(foo, MsgPack.Strict{typeof(foo)}, foo, foo_dict)
 
 foo = Foo{Float64,Char}(rand(), rand('a':'z', 100), Bar(rand(), rand()))
 foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
-@test can_round_trip(foo, MsgPack.Exact{typeof(foo)}, foo, foo_dict)
+@test can_round_trip(foo, MsgPack.Strict{typeof(foo)}, foo, foo_dict)
 
 arr = [foo, foo]
 @test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
-@test can_round_trip(arr, MsgPack.ArrayView{MsgPack.Exact{typeof(foo)}}, arr, [foo_dict, foo_dict])
+@test can_round_trip(arr, MsgPack.ArrayView{MsgPack.Strict{typeof(foo)}}, arr, [foo_dict, foo_dict])
 
 mutable struct MBar{T}
     a::T

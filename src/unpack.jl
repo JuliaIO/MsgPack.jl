@@ -125,7 +125,7 @@ struct FieldNotFound end
 construct(::Type{T}, args...) where {T} = T(args...)
 
 function unpack_type(io, byte, ::StructType, ::Type{S}) where {S}
-    if S <: Exact
+    if S <: Strict
         T = unwrap_exact(S)
         byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
         N = fieldcount(T)
@@ -178,7 +178,7 @@ function unpack_type(io, byte, ::StructType, ::Type{S}) where {S}
 end
 
 function unpack_type(io, byte, ::StructType, ::Type{Skip{S}}) where {S}
-    if S <: Exact
+    if S <: Strict
         T = unwrap_exact(S)
         N = fieldcount(T)
         byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
@@ -200,7 +200,7 @@ end
 
 # NOTE: this is a deprecated code path
 function unpack_type(io, byte, ::ImmutableStructType, ::Type{T}) where {T}
-    return unpack_type(io, byte, StructType(), Exact{T})
+    return unpack_type(io, byte, StructType(), Strict{T})
 end
 
 # NOTE: this is a deprecated code path

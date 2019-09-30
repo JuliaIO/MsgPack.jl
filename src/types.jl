@@ -433,14 +433,14 @@ See also: [`Extension`](@ref), [`extserialize`](@ref)
 extdeserialize(x::Extension) = (x.type, deserialize(IOBuffer(x.data)))
 
 #####
-##### `Exact`
+##### `Strict`
 #####
 
-struct Exact{T} end
+struct Strict{T} end
 
-msgpack_type(::Type{Exact{T}}) where {T} = StructType()
+msgpack_type(::Type{Strict{T}}) where {T} = StructType()
 
-unwrap_exact(::Type{Exact{T}}) where {T} = T
+unwrap_exact(::Type{Strict{T}}) where {T} = T
 
 #####
 ##### `Skip`
