@@ -19,10 +19,11 @@ actual deserialization of these elements to the time of their access via
 Note that `ArrayView` does not implement any form of caching - repeat accesses
 of the same element will re-deserialize the element upon every access.
 """
-struct ArrayView{T,B<:AbstractVector{UInt8}} <: AbstractVector{T}
+struct ArrayView{T,B<:AbstractVector{UInt8},S<:Tuple} <: AbstractVector{T}
     bytes::B
     positions::Vector{UInt64}
-    ArrayView{T}(bytes::B, positions) where {T,B} = new{T,B}(bytes, positions)
+    strict::S
+    ArrayView{T}(bytes::B, positions, strict::S=()) where {T,B,S} = new{T,B,S}(bytes, positions, strict)
 end
 
 Base.IndexStyle(::Type{<:ArrayView}) = Base.IndexLinear()
@@ -34,7 +35,7 @@ Base.@propagate_inbounds function Base.getindex(arr::ArrayView{T}, i::Int) where
     @inbounds start = arr.positions[i]
     @inbounds stop = i == length(arr) ? length(arr.bytes) : arr.positions[i + 1]
     @inbounds current_bytes = view(arr.bytes, start:stop)
-    return unpack(current_bytes, T)
+    return unpack(current_bytes, T; strict=arr.strict)
 end
 
 #####
@@ -51,16 +52,17 @@ This type is intended to be utilized via [`unpack`](@ref) in the same manner as
 `ArrayView`, and is similarly implements a "delay-deserialization-until-access"
 mechanism.
 """
-struct MapView{K,V,B<:AbstractVector{UInt8}} <: AbstractDict{K,V}
+struct MapView{K,V,B<:AbstractVector{UInt8},S<:Tuple} <: AbstractDict{K,V}
     bytes::B
     positions::Dict{K,UnitRange{UInt64}}
-    MapView{K,V}(bytes::B, positions) where {K,V,B} = new{K,V,B}(bytes, positions)
+    strict::S
+    MapView{K,V}(bytes::B, positions, strict::S=()) where {K,V,B,S} = new{K,V,B,S}(bytes, positions, strict)
 end
 
 Base.length(m::MapView) = length(m.positions)
 
 function _get_by_position(m::MapView{K,V}, position) where {K,V}
-    return unpack(view(m.bytes, position), V)
+    return unpack(view(m.bytes, position), V; strict=m.strict)
 end
 
 Base.get(m::MapView, key) = _get_by_position(m, m.positions[key])

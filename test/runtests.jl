@@ -2,9 +2,11 @@ using Test, MsgPack, Serialization
 
 function can_round_trip(value, T,
                         expected_typed_output = value,
-                        expected_any_output = value)
+                        expected_any_output = value,
+                        check_strict = false)
     bytes = pack(value)
-    return isequal(unpack(bytes, T), expected_typed_output) &&
+    return isequal(unpack(bytes, T; strict=(T,)), expected_typed_output) &&
+           isequal(unpack(bytes, T), expected_typed_output) &&
            isequal(unpack(bytes), expected_any_output)
 end
 
@@ -171,16 +173,13 @@ foo = Foo{Int,String}(nothing, String["abc", join(rand(Char,typemax(UInt16)))],
                       Bar(rand(Int), rand(Int)))
 foo_dict = Dict("x" => foo.x, "y" => foo.y, "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
-@test can_round_trip(foo, MsgPack.Strict{typeof(foo)}, foo, foo_dict)
 
 foo = Foo{Float64,Char}(rand(), rand('a':'z', 100), Bar(rand(), rand()))
 foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
-@test can_round_trip(foo, MsgPack.Strict{typeof(foo)}, foo, foo_dict)
 
 arr = [foo, foo]
 @test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
-@test can_round_trip(arr, MsgPack.ArrayView{MsgPack.Strict{typeof(foo)}}, arr, [foo_dict, foo_dict])
 
 mutable struct MBar{T}
     a::T
