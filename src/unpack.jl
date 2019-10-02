@@ -124,7 +124,7 @@ struct FieldNotFound end
 
 construct(::Type{T}, args...) where {T} = T(args...)
 
-function unpack_type(io, byte, ::StructType, ::Type{T}; strict) where {T}
+function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
     if any(T <: S for S in strict)
         byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
         N = fieldcount(T)
