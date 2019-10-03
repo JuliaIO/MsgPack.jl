@@ -1,14 +1,14 @@
 unpack(x; strict::Tuple=()) = unpack(x, Any; strict=strict)
 
 """
-    unpack(bytes, T::Type = Any)
+    unpack(bytes, T::Type = Any; strict::Tuple=())
 
-Return `unpack(IOBuffer(bytes), T)`.
+Return `unpack(IOBuffer(bytes), T; strict=strict)`.
 """
 unpack(bytes, ::Type{T}; strict::Tuple=()) where {T} = unpack(IOBuffer(bytes), T; strict=strict)
 
 """
-    unpack(msgpack_byte_stream::IO, T::Type = Any)
+    unpack(msgpack_byte_stream::IO, T::Type = Any; strict::Tuple=())
 
 Return the Julia value of type `T` deserialized from `msgpack_byte_stream`.
 
@@ -20,7 +20,14 @@ MessagePack object from `msgpack_byte_stream` into the default Julia
 representation corresponding to the object's MessagePack type. For details on
 default Julia representations, see [`AbstractMsgPackType`](@ref).
 
-See also: [`pack`](@ref)
+The `strict` keyword argument is a `Tuple` of `DataType`s where each element
+`S` must obey `msgpack_type(S) === StructType()`. `unpack` will assume that
+encountered MessagePack Maps to be deserialized to e.g. `S` will always contain
+fields that correspond strictly to the fields of `S`. In other words, the `i`th
+key in the Map must correspond to `fieldname(S, i)`, and the `i`th value must
+correspond to `getfield(::S, i)`.
+
+See also: [`pack`](@ref), [`construct`](@ref)
 """
 unpack(io::IO, ::Type{T}; strict::Tuple=()) where {T} = unpack_type(io, read(io, UInt8), msgpack_type(T), T; strict=strict)
 
@@ -122,6 +129,19 @@ end
 
 struct FieldNotFound end
 
+"""
+    construct(T::Type, args...)
+
+Return an instance of `T` given `args`; defaults to `T(args...)`.
+
+This function is meant to be overloaded for types `T` where `msgpack_type(T) === StructType()`.
+
+This function is called by [`unpack`](@ref) when deserializing `T` objects. When
+called for this purpose, `args` are field values for the given `T` instance and
+are passed in the order specified by `fieldname(T, i)`. If a given field of `T`
+wasn't found in the object's MessagePack Map representation, the corresponding
+value in `args` will be `MsgPack.FieldNotFound()`.
+"""
 construct(::Type{T}, args...) where {T} = T(args...)
 
 function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
@@ -193,16 +213,6 @@ function unpack_type(io, byte, ::StructType, ::Type{Skip{T}}; strict) where {T}
         unpack_type(io, byte, MapType(), Skip{Dict{Symbol,Any}}; strict=strict)
     end
     return Skip{T}()
-end
-
-# NOTE: this is a deprecated code path
-function unpack_type(io, byte, ::ImmutableStructType, ::Type{T}; strict) where {T}
-    return unpack_type(io, byte, StructType(), T; strict=(T, strict...))
-end
-
-# NOTE: this is a deprecated code path
-function unpack_type(io, byte, ::MutableStructType, ::Type{T}; strict) where {T}
-    return unpack_type(io, byte, StructType(), T; strict=strict)
 end
 
 #####

@@ -49,9 +49,7 @@ end
 ##### `StructType`
 #####
 
-function pack_type(io,
-                   t::StructType,
-                   x::T) where {T}
+function pack_type(io, t::StructType, x::T) where {T}
     N = fieldcount(T)
     if N <= 15
         write(io, magic_byte_min(MapFixFormat) | UInt8(N))

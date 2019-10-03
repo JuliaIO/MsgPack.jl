@@ -11,8 +11,8 @@ MsgPack.jl is a MessagePack implementation in pure Julia, inspired by [JSON3.jl]
 
 - (de)serialization of Julia values to/from MessagePack (see `pack` and `unpack`)
 - overloadable pre-(de)serialization transformations (see `from_msgpack` and `to_msgpack`)
-- automatic type construction/destruction (see `msgpack_type`, `ImmutableStructType`, and `MutableStructType`)
-- some basic immutable "views" over MsgPack-formatted byte buffers (see `ArrayView`, `MapView`).
+- automatic type construction/destruction (see `msgpack_type`, `construct`, and `StructType`)
+- some basic immutable "views" over MsgPack-formatted byte buffers (see `ArrayView` and `MapView`).
 - native `Serialization.serialize` support via MessagePack Extensions (see `Extension`, `extserialize`, and `extdeserialize`)
 
 ## `pack`/`unpack`
@@ -85,22 +85,18 @@ Note that each subtype of `AbstractMsgPackType` makes its own assumptions about 
 
 ## Automatic `struct` (de)serialization
 
-MsgPack substantially copies the approach taken by [JSON3.jl](https://github.com/quinnj/JSON3.jl) to provide an interface that facilitates automatic, performant (de)serialization of MessagePack Maps to/from Julia `struct`s. This interface supports two different possibilities: a slower approach that doesn't depend on field ordering during deserialization, and a faster approach that does.
-
-The slower (but more robust/flexible) approach looks like the following:
+MsgPack provides an interface that facilitates automatic, performant (de)serialization of MessagePack Maps to/from Julia `struct`s. Like [JSON3.jl](https://github.com/quinnj/JSON3.jl), MsgPack's interface supports two different possibilities: a slower approach that doesn't depend on field ordering during deserialization, and a faster approach that does:
 
 ```julia
 julia> using MsgPack
 
-julia> mutable struct MyMessage
+julia> struct MyMessage
            a::Int
            b::String
            c::Bool
-           MyMessage() = new() # this constructor is called during deserialization
-           MyMessage(a, b, c) = new(a, b, c)
        end
 
-julia> MsgPack.msgpack_type(::Type{MyMessage}) = MsgPack.MutableStructType()
+julia> MsgPack.msgpack_type(::Type{MyMessage}) = MsgPack.StructType()
 
 julia> messages = [MyMessage(rand(Int), join(rand('a':'z', 10)), rand(Bool)) for _ in 1:3]
 3-element Array{MyMessage,1}:
@@ -108,42 +104,26 @@ julia> messages = [MyMessage(rand(Int), join(rand('a':'z', 10)), rand(Bool)) for
  MyMessage(4988660392033153177, "mazsmrsawu", false)
  MyMessage(7955638288702558596, "gueytzhjvy", true)
 
-julia> unpack(pack(messages), Vector{MyMessage})
+julia> bytes = pack(messages);
+
+# slower, but does not assume struct field ordering
+julia> unpack(bytes, Vector{MyMessage})
 3-element Array{MyMessage,1}:
  MyMessage(4625239811981161650, "whosayfsvb", true)
  MyMessage(4988660392033153177, "mazsmrsawu", false)
  MyMessage(7955638288702558596, "gueytzhjvy", true)
+
+# faster, but assumes incoming struct fields are ordered
+julia> unpack(bytes, Vector{MyMessage}; strict=(MyMessage,))
+ 3-element Array{MyMessage,1}:
+  MyMessage(4625239811981161650, "whosayfsvb", true)
+  MyMessage(4988660392033153177, "mazsmrsawu", false)
+  MyMessage(7955638288702558596, "gueytzhjvy", true)
 ```
 
-The faster (but heavily constrained) approach looks much the same:
+**Do not use `strict=(T,)` unless you can ensure that all MessagePack Maps corresponding to `T` maintain the exact key-value pairs corresponding to `T`'s fields in the exact same order as specified by `T`'s Julia definition.** This property generally cannot be assumed unless you, yourself, were the original serializer of the message.
 
-```julia
-julia> using MsgPack
-
-julia> struct MyImmutableMessage
-           a::Int
-           b::String
-           c::Bool
-       end
-
-julia> MsgPack.msgpack_type(::Type{MyImmutableMessage}) = MsgPack.ImmutableStructType()
-
-julia> imessages = [MyImmutableMessage(rand(Int), join(rand('a':'z', 10)), rand(Bool)) for _ in 1:3]
-3-element Array{MyImmutableMessage,1}:
- MyImmutableMessage(3014962033538290449, "rwnumnkqxe", true)
- MyImmutableMessage(2400218223538654838, "ohfzkssphv", true)
- MyImmutableMessage(-6862137169467973847, "zylrifledh", false)
-
-julia> unpack(pack(imessages), Vector{MyImmutableMessage})
-3-element Array{MyImmutableMessage,1}:
- MyImmutableMessage(3014962033538290449, "rwnumnkqxe", true)
- MyImmutableMessage(2400218223538654838, "ohfzkssphv", true)
- MyImmutableMessage(-6862137169467973847, "zylrifledh", false)
-```
-
-**Do not use `ImmutableStructType` unless you can ensure that the MessagePack Maps you are deserializing maintain the exact same fields in the exact same order as the target `struct`.** This property generally cannot be assumed unless you, yourself, were the original serializer of the message.
-
-For additional details, see the docstrings for `MutableStructType` and `ImmutableStructType`.
+For additional details, see the docstrings for `StructType`, `unpack`, and `construct`.
 
 ## Immutable, lazy Julia views over MessagePack bytes
 

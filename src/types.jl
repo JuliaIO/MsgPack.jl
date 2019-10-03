@@ -172,48 +172,25 @@ Julia type does not have a known corresponding MessagePack type.
 struct AnyType <: AbstractMsgPackType end
 
 """
-    ImmutableStructType <: AbstractMsgPackType
+    StructType <: AbstractMsgPackType
 
-If `msgpack_type(T)` is defined to return `ImmutableStructType`, `T` will be
-(de)serialized as a MessagePack Map type assuming certain constraints that
-enable additional optimizations:
+If `msgpack_type(T)` is defined to return `StructType`, `T` will be (de)serialized
+as a MessagePack Map type, where each key-value pair corresponds to a field of `T`.
 
-- `T` supports `fieldcount`, `fieldtype`, `fieldname`, `getfield`, and a constructor
-that can be called as `T((getfield(x::T, i) for i in 1:fieldcount(T))...)` for any
-`T` instance `x`.
+- `T` must be an instantiable Julia type that supports `fieldcount`, `fieldtype`,
+`fieldname`, and `getfield`.
 
-- [`unpack`](@ref) will assume that incoming bytes to be deserialized to `T`
-will always be formmatted as a MessagePack Map whose fields correspond exactly
-to the fields of `T`. In other words, the `i`th key in the Map must correspond
-to `fieldname(T, i)`, and the `i`th value must correspond to `getfield(::T, i)`.
+- `T` must support a valid [`construct`](@ref) definition (supported by default
+if `T` supports e.g. `T((getfield(::T, i) for i in 1:fieldcount(T))...)`)
 
-This type is similar to [`MutableStructType`](@ref), but generally achieves
-greater (de)serialization performance by imposing tighter constraints.
+- [`pack`](@ref) will always serialize `T`'s fields in the order specified by
+`fieldname`. In other words, it is generally guaranteed that bytes written by
+`pack(x::T)` can be unpacked via `unpack(bytes, T; strict=(T,))`.
 """
-struct ImmutableStructType <: AbstractMsgPackType end
-
-"""
-    MutableStructType <: AbstractMsgPackType
-
-If `msgpack_type(T)` is defined to return `MutableStructType`, `T` will be
-(de)serialized as a MessagePack Map type assuming certain constraints that
-enable additional optimizations:
-
-- `T` supports `fieldcount`, `fieldtype`, `fieldname`, `getfield`, `setfield!`,
-and has the inner constructor `T() = new()`.
-
-- [`unpack`](@ref) will assume that incoming bytes to be deserialized to `T`
-will always be formmatted as a MessagePack Map whose fields are an unordered
-subset of the fields of `T`. If a given field is not present in the MessagePack
-Map, the corresponding field of the returned `T` instance will be left
-uninitialized.
-
-This type is similar to [`ImmutableStructType`](@ref), but imposes fewer
-constraints at the cost of (de)serialization performance.
-"""
-struct MutableStructType <: AbstractMsgPackType end
-
 struct StructType <: AbstractMsgPackType end
+
+@deprecate MutableStructType() StructType() false
+@deprecate ImmutableStructType() StructType() false
 
 #####
 ##### `msgpack_type`, `to_msgpack`, `from_msgpack` defaults
