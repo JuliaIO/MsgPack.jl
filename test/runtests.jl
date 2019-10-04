@@ -2,10 +2,16 @@ using Test, MsgPack, Serialization
 
 function can_round_trip(value, T,
                         expected_typed_output = value,
-                        expected_any_output = value,
-                        check_strict = false)
+                        expected_any_output = value)
     bytes = pack(value)
-    return isequal(unpack(bytes, T; strict=(T,)), expected_typed_output) &&
+    if T <: AbstractArray
+        S = eltype(T)
+    elseif T <: AbstractDict
+        S = valtype(T)
+    else
+        S = T
+    end
+    return isequal(unpack(bytes, T; strict=(S,)), expected_typed_output) &&
            isequal(unpack(bytes, T), expected_typed_output) &&
            isequal(unpack(bytes), expected_any_output)
 end
