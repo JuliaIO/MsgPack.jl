@@ -19,6 +19,7 @@ pack
 MsgPack.msgpack_type
 MsgPack.to_msgpack
 MsgPack.from_msgpack
+MsgPack.construct
 ```
 
 ## Julia <--> MessagePack Interface Types
@@ -35,8 +36,7 @@ ArrayType
 MapType
 ExtensionType
 AnyType
-ImmutableStructType
-MutableStructType
+StructType
 ```
 
 ## View Types

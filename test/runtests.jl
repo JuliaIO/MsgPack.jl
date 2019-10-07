@@ -4,7 +4,15 @@ function can_round_trip(value, T,
                         expected_typed_output = value,
                         expected_any_output = value)
     bytes = pack(value)
-    return isequal(unpack(bytes, T), expected_typed_output) &&
+    if T <: AbstractArray
+        S = eltype(T)
+    elseif T <: AbstractDict
+        S = valtype(T)
+    else
+        S = T
+    end
+    return isequal(unpack(bytes, T; strict=(S,)), expected_typed_output) &&
+           isequal(unpack(bytes, T), expected_typed_output) &&
            isequal(unpack(bytes), expected_any_output)
 end
 
@@ -144,7 +152,7 @@ namedtup_dict = Dict((string(k) => v for (k, v) in pairs(namedtup))...)
 arr = [dict]
 @test can_round_trip(arr, MsgPack.ArrayView{MsgPack.MapView{Any,Any}})
 
-# ImmutableStructType
+# StructType
 
 struct Bar{T}
     a::T
@@ -155,7 +163,7 @@ Base.:(==)(a::Bar, b::Bar) = a.a == b.a && a.b == b.b
 
 MsgPack.construct(::Type{T}, args...) where {T<:Bar} = T(promote(args...)...)
 
-MsgPack.msgpack_type(::Type{<:Bar}) = MsgPack.ImmutableStructType()
+MsgPack.msgpack_type(::Type{<:Bar}) = MsgPack.StructType()
 
 struct Foo{T,S}
     x::Union{Nothing,T}
@@ -165,7 +173,7 @@ end
 
 Base.:(==)(a::Foo, b::Foo) = a.x == b.x && a.y == b.y && a.z == b.z
 
-MsgPack.msgpack_type(::Type{<:Foo}) = MsgPack.ImmutableStructType()
+MsgPack.msgpack_type(::Type{<:Foo}) = MsgPack.StructType()
 
 foo = Foo{Int,String}(nothing, String["abc", join(rand(Char,typemax(UInt16)))],
                       Bar(rand(Int), rand(Int)))
@@ -179,8 +187,6 @@ foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.
 arr = [foo, foo]
 @test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
 
-# MutableStructType
-
 mutable struct MBar{T}
     a::T
     b::T
@@ -189,7 +195,14 @@ end
 
 Base.:(==)(a::MBar, b::MBar) = a.a == b.a && a.b == b.b
 
-MsgPack.msgpack_type(::Type{<:MBar}) = MsgPack.MutableStructType()
+MsgPack.msgpack_type(::Type{<:MBar}) = MsgPack.StructType()
+
+function MsgPack.construct(::Type{T}, a, b) where {T<:MBar}
+    bar = T()
+    bar.a = a
+    bar.b = b
+    return bar
+end
 
 mutable struct MFoo{T,S}
     x::Union{Nothing,T}
@@ -200,11 +213,19 @@ end
 
 Base.:(==)(a::MFoo, b::MFoo) = a.x == b.x && a.y == b.y && a.z == b.z
 
-MsgPack.msgpack_type(::Type{<:MFoo}) = MsgPack.MutableStructType()
+MsgPack.msgpack_type(::Type{<:MFoo}) = MsgPack.StructType()
+
+function MsgPack.construct(::Type{T}, x, y, z) where {T<:MFoo}
+    foo = T()
+    foo.x = x
+    foo.y = y
+    foo.z = z
+    return foo
+end
 
 foo = MFoo{Int,String}()
 foo.x = nothing
-foo.y = String["abc", join(rand(Char,typemax(UInt16)))]
+foo.y = String["abc", join(rand(Char, typemax(UInt16)))]
 foo.z = (z = MBar{Int}(); z.a = rand(Int); z.b = rand(Int); z)
 foo_dict = Dict("x" => foo.x, "y" => foo.y, "z" => Dict("a" => foo.z.a, "b" => foo.z.b))
 @test can_round_trip(foo, typeof(foo), foo, foo_dict)
@@ -240,7 +261,7 @@ ext = MsgPack.Extension(-123, [0x80, 0x7c, 0x8b, 0xf8])
 ext = MsgPack.Extension(111, [0x04, 0x16, 0x94, 0x13, 0x0a, 0x7d, 0x6f, 0x0c])
 @test can_round_trip(ext, MsgPack.Extension)
 ext = MsgPack.Extension(79, [0x00, 0x30, 0xd5, 0x64, 0x0f, 0x8d, 0x92, 0x90,
-                              0x98, 0x99, 0x14, 0x57, 0x0e, 0x8d, 0xf1, 0x3a])
+                             0x98, 0x99, 0x14, 0x57, 0x0e, 0x8d, 0xf1, 0x3a])
 @test can_round_trip(ext, MsgPack.Extension)
 ext = MsgPack.Extension(-118, [0xc7, 0x00, 0x8a])
 @test can_round_trip(ext, MsgPack.Extension)
