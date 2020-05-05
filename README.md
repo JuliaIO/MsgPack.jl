@@ -113,7 +113,7 @@ MsgPack.Ext(-43,UInt8[0x01,0x05,0x03,0x09])
 For a simple composite type `A`, if we want to assign it a typecode 4.
 
 ```julia
-immutable A
+struct A
     a::Int
     b::String
 end
@@ -124,12 +124,12 @@ Simply do `MsgPack.register(A, 4)`.
 It uses the default `encode` & `decode`.
 
 ```julia
-function encode(x)::Vector{UInt8}
-    tmp = [getfield(x, name) for name in fieldnames(x)]
+function encode(x::T)::Vector{UInt8} where T
+    tmp = [getfield(x, name) for name in fieldnames(T)]
     MsgPack.pack(tmp)
 end
 
-function decode{T}(::Type{T}, x::Vector{UInt8})::T
+function decode(::Type{T}, x::Vector{UInt8})::T where T
     args = MsgPack.unpack(x)
     T(args...)
 end
@@ -164,7 +164,7 @@ Dict{Int64,A} with 2 entries:
 It works for parametric types too.
 
 ```julia
-immutable B{T}
+struct B{T}
     a::T
 end
 

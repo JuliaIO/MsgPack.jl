@@ -41,12 +41,12 @@ const INT_FN   = (0xe0, 0xff)
 const TYPECODE_TO_TYPE = Dict{Int8, Any}()
 
 # For custom encoding.
-function encode(x)::Vector{UInt8}
-    tmp = [getfield(x, name) for name in fieldnames(x)]
+function encode(x::T)::Vector{UInt8} where T
+    tmp = [getfield(x, name) for name in fieldnames(T)]
     MsgPack.pack(tmp)
 end
 
-function decode{T}(::Type{T}, x::Vector{UInt8})::T
+function decode(::Type{T}, x::Vector{UInt8})::T where T
     args = MsgPack.unpack(x)
     T(args...)
 end
@@ -58,16 +58,15 @@ end
 """
 get_typecode(T::DataType) = error("Type $T is not registered with a typecode")
 
-function register{T}(::Type{T}, typecode::Integer)
+function register(::Type{T}, typecode::Integer) where T
     if haskey(TYPECODE_TO_TYPE, typecode)
         error("Type Code $typecode was already registered")
     end
-    global get_typecode
-    get_typecode(x::T)::Int8 = typecode
+    @eval get_typecode(x::$T)::Int8 = $typecode
     TYPECODE_TO_TYPE[typecode] = T
 end
 
-immutable Ext
+struct Ext
     typecode::Int8
     data::Vector{UInt8}
 
@@ -192,7 +191,7 @@ function unpack_ext(s::IO, n::Integer)
     data = read(s, n)
 
     T = get(TYPECODE_TO_TYPE, typecode, nothing)
-    if T == nothing
+    if T === nothing
         Ext(typecode, data, impltype=true)
     else
         decode(T, data)::T
@@ -213,7 +212,7 @@ function pack(v)
 end
 
 
-pack(s::IO, ::Void) = write(s, NIL)
+pack(s::IO, ::Nothing) = write(s, NIL)
 pack(s::IO, v::Bool) = v ? write(s, TRUE) : write(s, FALSE)
 
 function pack(s::IO, v::Integer)
@@ -353,7 +352,7 @@ end
 
 
 # Custom
-function pack{T}(s::IO, v::T)
+function pack(s::IO, v::T) where T
     typecode = get_typecode(v)
     data = encode(v)::Vector{UInt8}
     pack(s, Ext(typecode, data))

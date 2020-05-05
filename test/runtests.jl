@@ -1,6 +1,7 @@
 using MsgPack
 using MsgPack: pack, unpack, Ext
-using Base.Test
+using Test
+using Random
 
 ck_pack(a, b) = pack(a) == b && unpack(b) == a
 round_trip(x) = unpack(pack(x))
@@ -139,7 +140,7 @@ b = rand(UInt8, 2^19)
 
 # Custom type
 
-immutable A
+struct A
     a::Int
     b::String
 end
@@ -149,11 +150,11 @@ Base.:(==)(x::A, y::A) = x.a == y.a && x.b == y.b
 MsgPack.register(A, 4)
 
 
-immutable B{T}
+struct B{T}
     a::T
 end
 
-Base.:(==){T}(x::B{T}, y::B{T}) = x.a == y.a
+Base.:(==)(x::B{T}, y::B{T}) where T = x.a == y.a
 
 MsgPack.register(B, 5)
 
