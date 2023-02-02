@@ -307,46 +307,35 @@ end
 #####
 
 function pack_type(io, t::ExtensionType, x)
-    x = to_msgpack(t, x)::Extension
-    n = length(x.data)
-    n == 1 && return pack_format(io, ExtFix1Format(), x)
-    n == 2 && return pack_format(io, ExtFix2Format(), x)
-    n == 4 && return pack_format(io, ExtFix4Format(), x)
-    n == 8 && return pack_format(io, ExtFix8Format(), x)
-    n == 16 && return pack_format(io, ExtFix16Format(), x)
-    n <= typemax(UInt8) && return pack_format(io, Ext8Format(), x)
-    n <= typemax(UInt16) && return pack_format(io, Ext16Format(), x)
-    n <= typemax(UInt32) && return pack_format(io, Ext32Format(), x)
-    invalid_pack(io, t, x)
+    ext = to_msgpack(t, x)::Extension
+    nbytes = sizeof(ext.data)
+    write_extension_header(io, nbytes, ext.type)
+    write(io, ext.data)
+end
+
+function write_extension_header(io::IO, nbytes::Int, type::Int8)
+    nbytes == 1 && return write_extension_header(io, ExtFix1Format(), nbytes, type)
+    nbytes == 2 && return write_extension_header(io, ExtFix2Format(), nbytes, type)
+    nbytes == 4 && return write_extension_header(io, ExtFix4Format(), nbytes, type)
+    nbytes == 8 && return write_extension_header(io, ExtFix8Format(), nbytes, type)
+    nbytes == 16 && return write_extension_header(io, ExtFix16Format(), nbytes, type)
+    nbytes <= typemax(UInt8) && return write_extension_header(io, Ext8Format(), nbytes, type)
+    nbytes <= typemax(UInt16) && return write_extension_header(io, Ext16Format(), nbytes, type)
+    nbytes <= typemax(UInt32) && return write_extension_header(io, Ext32Format(), nbytes, type)
+    error("Object is too big to fit byte size into UInt32")
 end
 
 const ExtFixFormat = Union{ExtFix1Format,ExtFix2Format,ExtFix4Format,ExtFix8Format,ExtFix16Format}
 
-function pack_format(io, ::F, x::Extension) where {F<:ExtFixFormat}
+write_size(io, ::ExtFixFormat, nbytes) = nothing # Fixed format doesn't write the size
+write_size(io, ::Ext8Format, nbytes) = write(io, UInt8(nbytes))
+write_size(io, ::Ext16Format, nbytes) = write(io, hton(UInt16(nbytes)))
+write_size(io, ::Ext32Format, nbytes) = write(io, hton(UInt32(nbytes)))
+
+function write_extension_header(io::IO, f::F, nbytes::Int, type::Int8) where {F}
     write(io, magic_byte(F))
-    write(io, x.type)
-    write(io, x.data)
-end
-
-function pack_format(io, ::Ext8Format, x::Extension)
-    write(io, magic_byte(Ext8Format))
-    write(io, UInt8(length(x.data)))
-    write(io, x.type)
-    write(io, x.data)
-end
-
-function pack_format(io, ::Ext16Format, x::Extension)
-    write(io, magic_byte(Ext16Format))
-    write(io, hton(UInt16(length(x.data))))
-    write(io, x.type)
-    write(io, x.data)
-end
-
-function pack_format(io, ::Ext32Format, x::Extension)
-    write(io, magic_byte(Ext32Format))
-    write(io, hton(UInt32(length(x.data))))
-    write(io, x.type)
-    write(io, x.data)
+    write_size(io, f, nbytes)
+    write(io, type)
 end
 
 #####
