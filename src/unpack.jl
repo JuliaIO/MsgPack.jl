@@ -223,6 +223,45 @@ function unpack_type(io, byte, ::StructType, ::Type{Skip{T}}; strict) where {T}
 end
 
 #####
+##### `ArrayStructType`
+#####
+
+function unpack_type(io, byte, t::ArrayStructType, ::Type{T}; strict) where {T}
+    if byte <= magic_byte_max(ArrayFixFormat)
+        item_count = xor(byte, magic_byte_min(ArrayFixFormat))
+    elseif byte === magic_byte(Array16Format)
+        item_count = ntoh(read(io, UInt16))
+    elseif byte === magic_byte(Array32Format)
+        item_count = ntoh(read(io, UInt32))
+    else
+        invalid_unpack(io, byte, t, T)
+    end
+    N = fieldcount(T)
+    if item_count != N
+        error("field count mismatch (got $item_count, expected $N) encountered in $(io) attempting to read a MsgPack $(t) into a Julia $(T) at position $(position(io))")
+    end
+    constructor = (args...) -> construct(T, args...)
+    Base.@nexprs 32 i -> begin
+        F_i = fieldtype(T, i)
+        x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict)
+        N == i && return Base.@ncall i constructor x
+    end
+    others = Any[]
+    for i in 33:N
+        F_i = fieldtype(T, i)
+        push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict))
+    end
+    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
+end
+
+function unpack_type(io, byte, ::ArrayStructType, ::Type{Skip{T}}; strict) where {T}
+    unpack_type(io, byte, ArrayType(), Skip{Vector{Any}}; strict=strict)
+    return Skip{T}()
+end
+
+#####
 ##### `IntegerType`
 #####
 
