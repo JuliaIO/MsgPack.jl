@@ -41,7 +41,7 @@ function unpack_type(io, byte, t::AnyType, U::Union; strict)
         byte === magic_byte(NilFormat) && return from_msgpack(A, nothing)
         return unpack_type(io, byte, msgpack_type(B), B; strict=strict)
     end
-    return _unpack_any(io, byte, U)
+    return _unpack_any(io, byte, U; strict=strict)
 end
 
 @inline unpack_type(io, byte, ::AnyType, T::Type; strict) = _unpack_any(io, byte, T; strict=strict)
