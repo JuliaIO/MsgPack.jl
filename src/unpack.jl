@@ -274,9 +274,9 @@ unpack_format(io, ::Int64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T())
 ##### `NilType`
 #####
 
-function unpack_type(io, byte, ::NilType, ::Type{T}; strict) where {T}
+function unpack_type(io, byte, t::NilType, ::Type{T}; strict) where {T}
     byte === magic_byte(NilFormat) && return unpack_format(io, NilFormat(), T)
-    invalid_unpack(io, f, T)
+    invalid_unpack(io, byte, t, T)
 end
 
 unpack_type(io, byte, ::NilType, ::Type{T}; strict) where {T<:Skip} = T()

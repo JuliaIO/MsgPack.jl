@@ -326,7 +326,7 @@ end
     fields = Any[]
     for i in 1:fieldcount(T)
         name = fieldname(T, i)
-        strname = String(name)
+        strname = string(name)
         push!(fields, :($name = x[$strname]))
     end
     return Expr(:tuple, fields...)
