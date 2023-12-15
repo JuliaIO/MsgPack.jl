@@ -275,3 +275,6 @@ ext = MsgPack.Extension(-14, rand(UInt8, typemax(UInt16) + 1))
 @test can_round_trip(ext, MsgPack.Extension)
 ext = MsgPack.Extension(84, UInt8[])
 @test can_round_trip(ext, MsgPack.Extension)
+
+using Aqua
+Aqua.test_all(MsgPack; ambiguities=false)
