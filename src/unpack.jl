@@ -146,7 +146,13 @@ construct(::Type{T}, args...) where {T} = T(args...)
 
 function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
     if any(T <: S for S in strict)
-        byte > magic_byte_max(MapFixFormat) && read(io, UInt8)
+        if byte > magic_byte_max(MapFixFormat)
+            if byte === magic_byte(Map16Format)
+                read(io, UInt16)
+            elseif byte === magic_byte(Map32Format)
+                read(io, UInt32)
+            end
+        end
         N = fieldcount(T)
         constructor = (args...) -> construct(T, args...)
         Base.@nexprs 32 i -> begin
@@ -158,11 +164,12 @@ function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
         others = Any[]
         for i in 33:N
             F_i = fieldtype(T, i)
+            unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol}; strict=strict)
             push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict))
         end
-        return constructor(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13,
-                           x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25,
-                           x26, x27, x28, x29, x30, x31, x32, others...)
+        return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                           x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                           x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
     else
         if byte <= magic_byte_max(MapFixFormat)
             pair_count = xor(byte, magic_byte_min(MapFixFormat))
@@ -177,7 +184,7 @@ function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
         fields = Any[FieldNotFound() for _ in 1:N]
         for _ in 1:pair_count
             key = unpack(io, Symbol) # TODO validation check?
-            Base.@nif(32,
+            Base.@nif(33, # `i` in range 1:(33-1)
                       i -> i <= N && fieldname(T, i) === key,
                       i -> setindex!(fields, unpack(io, fieldtype(T, i); strict=strict), i),
                       i -> begin

@@ -240,6 +240,57 @@ foo_dict = Dict("x" => foo.x, "y" => map(string, foo.y), "z" => Dict("a" => foo.
 arr = [foo, foo]
 @test can_round_trip(arr, MsgPack.ArrayView{typeof(foo)}, arr, [foo_dict, foo_dict])
 
+struct LargeStruct
+    x1::Int64
+    x2::Int64
+    x3::Int64
+    x4::Int64
+    x5::Int64
+    x6::Int64
+    x7::Int64
+    x8::Int64
+    x9::Int64
+    x10::Int64
+    x11::Int64
+    x12::Int64
+    x13::Int64
+    x14::Int64
+    x15::Int64
+    x16::Int64
+    x17::Int64
+    x18::Int64
+    x19::Int64
+    x20::Int64
+    x21::Int64
+    x22::Int64
+    x23::Int64
+    x24::Int64
+    x25::Int64
+    x26::Int64
+    x27::Int64
+    x28::Int64
+    x29::Int64
+    x30::Int64
+    x31::Int64
+    x32::Int64
+    x33::Int64
+    x34::Int64
+    x35::Int64
+    x36::Int64
+    x37::Int64
+    x38::Int64
+    x39::Int64
+    x40::Int64
+end
+
+MsgPack.msgpack_type(::Type{<:LargeStruct}) = MsgPack.StructType()
+
+largestruct = LargeStruct((101:140)...)
+
+largestruct_dict = Dict("x$i" => 100+i for i in 1:40)
+
+@test can_round_trip(largestruct, typeof(largestruct), largestruct, largestruct_dict)
+
 # ExtensionType
 
 type = 123
