@@ -1,12 +1,5 @@
 # MsgPack.jl
 
-[![Build Status](https://travis-ci.org/JuliaIO/MsgPack.jl.svg?branch=master)](https://travis-ci.org/JuliaIO/MsgPack.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/93qbkbnqh0fn9qr4/branch/master?svg=true)](https://ci.appveyor.com/project/kmsquire/msgpack-jl/branch/master)
-[![codecov](https://codecov.io/gh/JuliaIO/MsgPack.jl/branch/master/graph/badge.svg?token=D0bcI0Rtsw)](https://codecov.io/gh/JuliaIO/MsgPack.jl)
-
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaIO.github.io/MsgPack.jl/stable/)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://JuliaIO.github.io/MsgPack.jl/latest/)
-
 MsgPack.jl is a MessagePack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl). This package supports:
 
 - (de)serialization of Julia values to/from MessagePack (see `pack` and `unpack`)
