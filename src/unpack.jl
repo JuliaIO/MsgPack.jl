@@ -429,6 +429,20 @@ function _unpack_array(io, n, ::Type{Skip{T}}, strict) where {T}
     return Skip{T}()
 end
 
+function _unpack_array(io, n, ::Type{T}, strict) where {N, T<:Tuple{Vararg{Any, N}}}
+    return T(tuple((
+        unpack_type(io, read(io, UInt8), msgpack_type(fieldtype(T, i)), fieldtype(T, i); strict=strict)
+        for i in 1:N
+    )...))
+end
+
+function _unpack_array(io, n, ::Type{Skip{T}}, strict) where {T<:Tuple}
+    for i in 1:N
+        unpack_type(io, read(io, UInt8), msgpack_type(fieldtype(T, i)), fieldtype(T, i); strict=strict)
+    end
+    return Skip{T}()
+end
+
 function _unpack_array(io::Base.GenericIOBuffer, n, ::Type{T}, strict) where {T<:ArrayView}
     E = _eltype(T)
     e = msgpack_type(E)

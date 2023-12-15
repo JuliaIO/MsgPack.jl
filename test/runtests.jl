@@ -110,6 +110,10 @@ end
 tup = (arr...,)
 @test can_round_trip(tup, Tuple, tup, arr)
 
+@test can_round_trip(tup, typeof(tup), tup, arr)
+
+@test can_round_trip((true, tup), typeof((true, tup)), (true, tup), [true, arr])
+
 set = Set(arr)
 @test can_round_trip(set, Set, set, collect(set))
 
