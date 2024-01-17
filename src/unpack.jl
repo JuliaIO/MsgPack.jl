@@ -75,6 +75,10 @@ function _unpack_any(io, byte, ::Type{T}; strict) where {T}
         return unpack_format(io, Float32Format(), T)
     elseif byte === magic_byte(Float64Format)
         return unpack_format(io, Float64Format(), T)
+    elseif byte === magic_byte(ComplexF32Format)
+        return unpack_format(io, ComplexF32Format(), T)
+    elseif byte === magic_byte(ComplexF64Format)
+        return unpack_format(io, ComplexF64Format(), T)
     elseif byte === magic_byte(Str8Format)
         return unpack_format(io, Str8Format(), T)
     elseif byte === magic_byte(Str16Format)
@@ -326,6 +330,26 @@ unpack_format(io, ::Float64Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(r
 unpack_format(io, ::Float64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T())
 
 #####
+##### `CFloatType`
+#####
+
+function unpack_type(io, byte, t::ComplexFType, ::Type{T}; strict) where {T}
+    if byte === magic_byte(ComplexF32Format)
+        return unpack_format(io, ComplexF32Format(), T)
+    elseif byte === magic_byte(ComplexF64Format)
+        return unpack_format(io, ComplexF64Format(), T)
+    else
+        invalid_unpack(io, byte, t, T)
+    end
+end
+
+unpack_format(io, ::ComplexF32Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, ComplexF32)))
+unpack_format(io, ::ComplexF32Format, ::Type{T}) where {T<:Skip} = (skip(io, 4); T())
+
+unpack_format(io, ::ComplexF64Format, ::Type{T}) where {T} = from_msgpack(T, ntoh(read(io, ComplexF64)))
+unpack_format(io, ::ComplexF64Format, ::Type{T}) where {T<:Skip} = (skip(io, 8); T())
+
+#####
 ##### `StringType`
 #####
 
@@ -411,7 +435,7 @@ unpack_format(io, f::ArrayFixFormat, ::Type{T}, strict) where {T} = _unpack_arra
 _eltype(T) = eltype(T)
 
 function _unpack_array(io, n, ::Type{T}, strict) where {T}
-    E = _eltype(T)
+E = _eltype(T)
     e = msgpack_type(E)
     result = Vector{E}(undef, n)
     for i in 1:n
