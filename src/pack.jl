@@ -160,6 +160,33 @@ function pack_format(io, ::Float64Format, x)
 end
 
 #####
+##### `CFloatType`
+#####
+
+function pack_type(io, t::ComplexFType, x)
+    x = to_msgpack(t, x)
+    x isa ComplexF32 && return pack_format(io, ComplexF32Format(), x)
+    x isa ComplexF64 && return pack_format(io, ComplexF64Format(), x)
+    invalid_pack(io, t, x)
+end
+
+function pack_format(io, ::ComplexF32Format, x)
+    y = Vector{Float32}(undef,2*length(x))
+    y[1:2:end] .= Float32(real(x))
+    y[2:2:end] .= Float32(imag(x))
+    write(io, magic_byte(ComplexF32Format))
+    write(io, hton(y))
+end
+
+function pack_format(io, ::ComplexF64Format, x)
+    y = Vector{Float64}(undef,2)
+    y[1] = Float64(real(x))
+    y[2] = Float64(imag(x))
+    write(io, magic_byte(ComplexF64Format))
+    write(io, hton.(y))
+end
+
+#####
 ##### `StringType`
 #####
 
