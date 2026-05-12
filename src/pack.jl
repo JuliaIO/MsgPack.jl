@@ -1,15 +1,46 @@
+const Primitive = Union{Base.BitInteger, Base.IEEEFloat}
+
+# Write `x` as big-endian raw bytes to `io`. The IOBuffer fast path bypasses the
+# `Base.RefValue{T}` allocation that `write(io::IO, x::Real)` incurs in Julia
+# stdlib: that call chain (`write` -> `write(io, Ref(x), n)` -> `unsafe_write`)
+# crosses enough indirection that escape analysis (≤1.12) can't elide the Ref,
+# so every multi-byte integer/float write costs one heap allocation. Inlined
+# here as a single self-contained block, the compiler proves `r` doesn't escape
+# and SROAs it. The generic IO fallback keeps the (slower, allocating) stdlib
+# behavior for non-buffer streams, which aren't on MsgPack's hot path.
+@inline function write_be(io::IOBuffer, x::T) where {T<:Primitive}
+    y = hton(x)
+    n = sizeof(T)
+    Base.ensureroom(io, n)
+    p = io.append ? io.size + 1 : io.ptr
+    r = Ref(y)
+    GC.@preserve r begin
+        Base.unsafe_copyto!(pointer(io.data, p),
+                            Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, r)), n)
+    end
+    io.size = max(io.size, p + n - 1)
+    io.append || (io.ptr += n)
+    return nothing
+end
+
+@inline write_be(io::IO, x::Primitive) = (write(io, hton(x)); nothing)
+
 """
-    pack(x)
+    pack(x; sizehint=64)
 
 Serialize `x` to MessagePack format and return the resulting `Vector{UInt8}`.
+
+`sizehint` is the initial capacity (in bytes) of the underlying buffer; pass a
+larger value if you know the output will be big to avoid geometric resizes.
+For full control over allocation, use `pack(io, x)` with your own `IO`.
 
 This function uses [`msgpack_type`](@ref) and [`to_msgpack`](@ref) to determine
 the appropriate translation of the `value` into MessagePack format.
 
 See also: [`unpack`](@ref)
 """
-function pack(x)
-    io = IOBuffer(UInt8[]; append = true)
+function pack(x; sizehint::Integer = 64)
+    io = IOBuffer(UInt8[]; sizehint = sizehint, append = true)
     pack(io, x)
     return take!(io)
 end
@@ -55,10 +86,10 @@ function pack_type(io, t::StructType, x::T) where {T}
         write(io, magic_byte_min(MapFixFormat) | UInt8(N))
     elseif N <= typemax(UInt16)
         write(io, magic_byte(Map16Format))
-        write(io, hton(UInt16(N)))
+        write_be(io, UInt16(N))
     elseif N <= typemax(UInt32)
         write(io, magic_byte(Map32Format))
-        write(io, hton(UInt32(N)))
+        write_be(io, UInt32(N))
     else
         invalid_pack(io, t, x)
     end
@@ -98,7 +129,7 @@ function pack_type(io, t::IntegerType, x)
     invalid_pack(io, t, x)
 end
 
-pack_format(io, f::Union{IntFixNegativeFormat,IntFixPositiveFormat}) = write(io, f.byte)
+pack_format(io, f::Union{IntFixNegativeFormat,IntFixPositiveFormat}) = (write(io, f.byte); nothing)
 pack_format(io, f::Int8Format, x) = _pack_integer(io, f, Int8, x)
 pack_format(io, f::Int16Format, x) = _pack_integer(io, f, Int16, x)
 pack_format(io, f::Int32Format, x) = _pack_integer(io, f, Int32, x)
@@ -109,9 +140,9 @@ pack_format(io, f::UInt32Format, x) = _pack_integer(io, f, UInt32, x)
 pack_format(io, f::UInt64Format, x) = _pack_integer(io, f, UInt64, x)
 
 function _pack_integer(io, ::F, ::Type{T}, x) where {F,T}
-    y = hton(T(x))
     write(io, magic_byte(F))
-    write(io, y)
+    write_be(io, T(x))
+    return nothing
 end
 
 #####
@@ -120,7 +151,7 @@ end
 
 pack_type(io, ::NilType, x) = pack_format(io, NilFormat(), x)
 
-pack_format(io, ::NilFormat, ::Any) = write(io, magic_byte(NilFormat))
+pack_format(io, ::NilFormat, ::Any) = (write(io, magic_byte(NilFormat)); nothing)
 
 #####
 ##### `BooleanType`
@@ -133,8 +164,8 @@ function pack_type(io, t::BooleanType, x)
     invalid_pack(io, t, x)
 end
 
-pack_format(io, ::TrueFormat, ::Any) = write(io, magic_byte(TrueFormat))
-pack_format(io, ::FalseFormat, ::Any) = write(io, magic_byte(FalseFormat))
+pack_format(io, ::TrueFormat, ::Any) = (write(io, magic_byte(TrueFormat)); nothing)
+pack_format(io, ::FalseFormat, ::Any) = (write(io, magic_byte(FalseFormat)); nothing)
 
 #####
 ##### `FloatType`
@@ -148,15 +179,15 @@ function pack_type(io, t::FloatType, x)
 end
 
 function pack_format(io, ::Float32Format, x)
-    y = Float32(x)
     write(io, magic_byte(Float32Format))
-    write(io, hton(y))
+    write_be(io, Float32(x))
+    return nothing
 end
 
 function pack_format(io, ::Float64Format, x)
-    y = Float64(x)
     write(io, magic_byte(Float64Format))
-    write(io, hton(y))
+    write_be(io, Float64(x))
+    return nothing
 end
 
 #####
@@ -176,24 +207,28 @@ end
 function pack_format(io, f::StrFixFormat, x)
     write(io, f.byte)
     write(io, x)
+    return nothing
 end
 
 function pack_format(io, ::Str8Format, x)
     write(io, magic_byte(Str8Format))
     write(io, UInt8(sizeof(x)))
     write(io, x)
+    return nothing
 end
 
 function pack_format(io, ::Str16Format, x)
     write(io, magic_byte(Str16Format))
-    write(io, hton(UInt16(sizeof(x))))
+    write_be(io, UInt16(sizeof(x)))
     write(io, x)
+    return nothing
 end
 
 function pack_format(io, ::Str32Format, x)
     write(io, magic_byte(Str32Format))
-    write(io, hton(UInt32(sizeof(x))))
+    write_be(io, UInt32(sizeof(x)))
     write(io, x)
+    return nothing
 end
 
 #####
@@ -213,18 +248,21 @@ function pack_format(io, ::Bin8Format, x)
     write(io, magic_byte(Bin8Format))
     write(io, UInt8(length(x)))
     write(io, x)
+    return nothing
 end
 
 function pack_format(io, ::Bin16Format, x)
     write(io, magic_byte(Bin16Format))
-    write(io, hton(UInt16(length(x))))
+    write_be(io, UInt16(length(x)))
     write(io, x)
+    return nothing
 end
 
 function pack_format(io, ::Bin32Format, x)
     write(io, magic_byte(Bin32Format))
-    write(io, hton(UInt32(length(x))))
+    write_be(io, UInt32(length(x)))
     write(io, x)
+    return nothing
 end
 
 #####
@@ -249,7 +287,7 @@ end
 
 function pack_format(io, ::Array16Format, x)
     write(io, magic_byte(Array16Format))
-    write(io, hton(UInt16(length(x))))
+    write_be(io, UInt16(length(x)))
     for i in x
         pack(io, i)
     end
@@ -257,7 +295,7 @@ end
 
 function pack_format(io, ::Array32Format, x)
     write(io, magic_byte(Array32Format))
-    write(io, hton(UInt32(length(x))))
+    write_be(io, UInt32(length(x)))
     for i in x
         pack(io, i)
     end
@@ -286,7 +324,7 @@ end
 
 function pack_format(io, ::Map16Format, x)
     write(io, magic_byte(Map16Format))
-    write(io, hton(UInt16(length(x))))
+    write_be(io, UInt16(length(x)))
     for (k, v) in x
         pack(io, k)
         pack(io, v)
@@ -295,7 +333,7 @@ end
 
 function pack_format(io, ::Map32Format, x)
     write(io, magic_byte(Map32Format))
-    write(io, hton(UInt32(length(x))))
+    write_be(io, UInt32(length(x)))
     for (k, v) in x
         pack(io, k)
         pack(io, v)
@@ -311,6 +349,7 @@ function pack_type(io, t::ExtensionType, x)
     nbytes = sizeof(ext.data)
     write_extension_header(io, nbytes, ext.type)
     write(io, ext.data)
+    return nothing
 end
 
 function extformat_from_bytes(nbytes::Int)
@@ -328,9 +367,9 @@ end
 const ExtFixFormat = Union{ExtFix1Format,ExtFix2Format,ExtFix4Format,ExtFix8Format,ExtFix16Format}
 
 write_size(io, ::ExtFixFormat, nbytes) = nothing # Fixed format doesn't write the size
-write_size(io, ::Ext8Format, nbytes) = write(io, UInt8(nbytes))
-write_size(io, ::Ext16Format, nbytes) = write(io, hton(UInt16(nbytes)))
-write_size(io, ::Ext32Format, nbytes) = write(io, hton(UInt32(nbytes)))
+write_size(io, ::Ext8Format, nbytes) = (write(io, UInt8(nbytes)); nothing)
+write_size(io, ::Ext16Format, nbytes) = write_be(io, UInt16(nbytes))
+write_size(io, ::Ext32Format, nbytes) = write_be(io, UInt32(nbytes))
 
 write_sizeof(::ExtFixFormat) = 0 # Fixed format doesn't write the size
 write_sizeof(::Ext8Format) = sizeof(UInt8)
@@ -342,6 +381,7 @@ function write_extension_header(io::IO, nbytes::Int, type::Int8)
     write(io, magic_byte(typeof(f)))
     write_size(io, f, nbytes)
     write(io, type)
+    return nothing
 end
 
 function ext_header_size(nbytes::Int)
