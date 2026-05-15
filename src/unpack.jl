@@ -150,33 +150,64 @@ value in `args` will be `MsgPack.FieldNotFound()`.
 """
 construct(::Type{T}, args...) where {T} = T(args...)
 
-function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
+# Function barrier between strict and non-strict paths: each is its own
+# MethodInstance, inferred only when actually called. The common non-strict
+# case (empty `strict::Tuple{}`) constant-folds the predicate at the call
+# site, so the strict body is never instantiated for typical callers.
+function unpack_type(io, byte, ::StructType, ::Type{T}; strict) where {T}
     if any(T <: S for S in strict)
-        if byte > magic_byte_max(MapFixFormat)
-            if byte === magic_byte(Map16Format)
-                read(io, UInt16)
-            elseif byte === magic_byte(Map32Format)
-                read(io, UInt32)
+        return unpack_struct_strict(io, byte, T, strict)
+    else
+        return unpack_struct(io, byte, T, strict)
+    end
+end
+
+function unpack_struct_strict(io, byte, ::Type{T}, strict) where {T}
+    if byte > magic_byte_max(MapFixFormat)
+        if byte === magic_byte(Map16Format)
+            read(io, UInt16)
+        elseif byte === magic_byte(Map32Format)
+            read(io, UInt32)
+        end
+    end
+    N = fieldcount(T)
+    Base.@nexprs 32 i -> begin
+        F_i = fieldtype(T, i)
+        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol}; strict=strict)
+        x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict)
+        N == i && return Base.@ncall i construct T x
+    end
+    others = Any[]
+    for i in 33:N
+        F_i = fieldtype(T, i)
+        unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol}; strict=strict)
+        push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict))
+    end
+    return construct(T, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                     x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                     x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
+end
+
+# Generated body: emits exactly `fieldcount(T)` field-match branches at expand
+# time, instead of the 33-way `@nif` that the original code walks regardless of
+# T's actual field count. For a 3-field struct, inference walks 3 branches,
+# not 33, with each `unpack(io, fieldtype(T, i))` resolving to a statically
+# typed leaf (since `i` is a literal in the emitted code).
+@generated function unpack_struct(io, byte, ::Type{T}, strict) where {T}
+    N = fieldcount(T)
+    field_dispatch = :(unpack(io))  # default: discard unknown key's value
+    for i in N:-1:1
+        fname = QuoteNode(fieldname(T, i))
+        ftype = fieldtype(T, i)
+        field_dispatch = quote
+            if key === $fname
+                fields[$i] = unpack(io, $ftype; strict=strict)
+            else
+                $field_dispatch
             end
         end
-        N = fieldcount(T)
-        constructor = (args...) -> construct(T, args...)
-        Base.@nexprs 32 i -> begin
-            F_i = fieldtype(T, i)
-            unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol}; strict=strict)
-            x_i = unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict)
-            N == i && return Base.@ncall i constructor x
-        end
-        others = Any[]
-        for i in 33:N
-            F_i = fieldtype(T, i)
-            unpack_type(io, read(io, UInt8), StringType(), Skip{Symbol}; strict=strict)
-            push!(others, unpack_type(io, read(io, UInt8), msgpack_type(F_i), F_i; strict=strict))
-        end
-        return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
-                           x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
-                           x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
-    else
+    end
+    quote
         if byte <= magic_byte_max(MapFixFormat)
             pair_count = xor(byte, magic_byte_min(MapFixFormat))
         elseif byte === magic_byte(Map16Format)
@@ -184,25 +215,12 @@ function unpack_type(io, byte, t::StructType, ::Type{T}; strict) where {T}
         elseif byte === magic_byte(Map32Format)
             pair_count = ntoh(read(io, UInt32))
         else
-            invalid_unpack(io, byte, t, T)
+            invalid_unpack(io, byte, StructType(), T)
         end
-        N = fieldcount(T)
-        fields = Any[FieldNotFound() for _ in 1:N]
+        fields = Any[FieldNotFound() for _ in 1:$N]
         for _ in 1:pair_count
-            key = unpack(io, Symbol) # TODO validation check?
-            Base.@nif(33, # `i` in range 1:(33-1)
-                      i -> i <= N && fieldname(T, i) === key,
-                      i -> setindex!(fields, unpack(io, fieldtype(T, i); strict=strict), i),
-                      i -> begin
-                          is_field_still_unread = true
-                          for j in 33:N
-                              fieldname(T, j) === key || continue
-                              setindex!(fields, unpack(io, fieldtype(T, j); strict=strict), j)
-                              is_field_still_unread = false
-                              break
-                          end
-                          is_field_still_unread && unpack(io)
-                      end)
+            key = unpack(io, Symbol)
+            $field_dispatch
         end
         return construct(T, fields...)
     end
