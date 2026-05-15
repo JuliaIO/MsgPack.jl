@@ -404,9 +404,15 @@ function unpack_type(io, byte, t::ArrayType, ::Type{T}; strict) where {T}
     end
 end
 
-unpack_format(io, ::Array16Format, ::Type{T}, strict) where {T} = _unpack_array(io, ntoh(read(io, UInt16)), T, strict)
-unpack_format(io, ::Array32Format, ::Type{T}, strict) where {T} = _unpack_array(io, ntoh(read(io, UInt32)), T, strict)
-unpack_format(io, f::ArrayFixFormat, ::Type{T}, strict) where {T} = _unpack_array(io, xor(f.byte, magic_byte_min(ArrayFixFormat)), T, strict)
+# Narrow `n` to `Int` at call site so all 3 width variants share one
+# `_unpack_array(io, n::Int, T, strict)` specialization per `T`. Without this,
+# Julia compiles a separate _unpack_array spec for each of UInt8/UInt16/UInt32
+# (and any other Integer type that happens to flow in), which fans inference
+# out 3x for every recursively-reachable `T`. The `Int(...)` conversion is
+# free at runtime — for-loop bounds want Int anyway.
+unpack_format(io, ::Array16Format, ::Type{T}, strict) where {T} = _unpack_array(io, Int(ntoh(read(io, UInt16))), T, strict)
+unpack_format(io, ::Array32Format, ::Type{T}, strict) where {T} = _unpack_array(io, Int(ntoh(read(io, UInt32))), T, strict)
+unpack_format(io, f::ArrayFixFormat, ::Type{T}, strict) where {T} = _unpack_array(io, Int(xor(f.byte, magic_byte_min(ArrayFixFormat))), T, strict)
 
 _eltype(T) = eltype(T)
 
@@ -472,9 +478,11 @@ function unpack_type(io, byte, t::MapType, ::Type{T}; strict) where {T}
     end
 end
 
-unpack_format(io, ::Map16Format, ::Type{T}, strict) where {T} = _unpack_map(io, ntoh(read(io, UInt16)), T, strict)
-unpack_format(io, ::Map32Format, ::Type{T}, strict) where {T} = _unpack_map(io, ntoh(read(io, UInt32)), T, strict)
-unpack_format(io, f::MapFixFormat, ::Type{T}, strict) where {T} = _unpack_map(io, xor(f.byte, magic_byte_min(MapFixFormat)), T, strict)
+# See Array equivalents above: narrow `n` to `Int` so all 3 width variants
+# share one `_unpack_map` specialization per `T`.
+unpack_format(io, ::Map16Format, ::Type{T}, strict) where {T} = _unpack_map(io, Int(ntoh(read(io, UInt16))), T, strict)
+unpack_format(io, ::Map32Format, ::Type{T}, strict) where {T} = _unpack_map(io, Int(ntoh(read(io, UInt32))), T, strict)
+unpack_format(io, f::MapFixFormat, ::Type{T}, strict) where {T} = _unpack_map(io, Int(xor(f.byte, magic_byte_min(MapFixFormat))), T, strict)
 
 _keytype(T) = Any
 _keytype(::Type{T}) where {K,V,T<:AbstractDict{K,V}} = keytype(T)
