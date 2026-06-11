@@ -331,5 +331,74 @@ ext = MsgPack.Extension(-14, rand(UInt8, typemax(UInt16) + 1))
 ext = MsgPack.Extension(84, UInt8[])
 @test can_round_trip(ext, MsgPack.Extension)
 
+# wire format: spec-defined golden bytes (guards the big-endian fast path
+# beyond round-tripping - a reader/writer that agree on the wrong byte order
+# would still round-trip)
+
+@test pack(typemax(UInt16)) == UInt8[0xcd, 0xff, 0xff]
+@test pack(typemax(UInt32)) == UInt8[0xce, 0xff, 0xff, 0xff, 0xff]
+@test pack(typemax(UInt64)) == UInt8[0xcf, fill(0xff, 8)...]
+@test pack(typemin(Int16)) == UInt8[0xd1, 0x80, 0x00]
+@test pack(typemin(Int32)) == UInt8[0xd2, 0x80, 0x00, 0x00, 0x00]
+@test pack(typemin(Int64)) == UInt8[0xd3, 0x80, fill(0x00, 7)...]
+@test pack(1.5) == UInt8[0xcb, reverse(reinterpret(UInt8, [1.5]))...]
+@test pack("a"^300) == UInt8[0xda, 0x01, 0x2c, codeunits("a"^300)...]
+
+# pack(x; sizehint): same bytes regardless of initial capacity
+
+payload = Any[1, "two", 3.0, Dict("a" => collect(1:1000))]
+let reference = pack(payload)
+    @test pack(payload; sizehint = 1) == reference     # forces buffer growth
+    @test pack(payload; sizehint = 2^20) == reference  # oversized
+end
+
+# the IOBuffer fast path, the non-append IOBuffer branch, and the generic IO
+# fallback must produce identical bytes
+
+let reference = pack(payload)
+    io = IOBuffer() # append = false branch of write_be
+    pack(io, payload)
+    @test take!(io) == reference
+
+    mktemp() do path, file_io # generic `IO` fallback (IOStream)
+        pack(file_io, payload)
+        close(file_io)
+        @test read(path) == reference
+    end
+end
+
+# non-strict struct decoding edge cases (field-match code is generated per
+# struct type): unknown keys are skipped, key order doesn't matter, missing
+# fields surface as FieldNotFound to `construct`
+
+struct BarDefaults
+    a::Int
+    b::Int
+end
+
+MsgPack.msgpack_type(::Type{BarDefaults}) = MsgPack.StructType()
+
+function MsgPack.construct(::Type{BarDefaults}, a, b)
+    a isa MsgPack.FieldNotFound && (a = -1)
+    b isa MsgPack.FieldNotFound && (b = -2)
+    return BarDefaults(a, b)
+end
+
+# unknown keys (before, between, after known ones) are skipped
+@test unpack(pack((junk = 99, a = 1, alsojunk = [1, 2, 3], b = 2, more = "x")), BarDefaults) == BarDefaults(1, 2)
+# key order doesn't matter
+@test unpack(pack((b = 2, a = 1)), BarDefaults) == BarDefaults(1, 2)
+# missing fields surface as FieldNotFound
+@test unpack(pack((b = 2,)), BarDefaults) == BarDefaults(-1, 2)
+@test unpack(pack(Dict{String, Int}()), BarDefaults) == BarDefaults(-1, -2)
+# duplicate keys: the last occurrence wins (pack a map with a repeated key by hand)
+let io = IOBuffer()
+    write(io, MsgPack.magic_byte_min(MsgPack.MapFixFormat) | UInt8(3))
+    pack(io, "a"); pack(io, 1)
+    pack(io, "a"); pack(io, 10)
+    pack(io, "b"); pack(io, 2)
+    @test unpack(take!(io), BarDefaults) == BarDefaults(10, 2)
+end
+
 using Aqua
 Aqua.test_all(MsgPack; ambiguities=false)
