@@ -1,5 +1,8 @@
 # MsgPack.jl
 
+[![CI](https://github.com/JuliaIO/MsgPack.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaIO/MsgPack.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/JuliaIO/MsgPack.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaIO/MsgPack.jl)
+
 MsgPack.jl is a MessagePack implementation in pure Julia, inspired by [JSON3.jl](https://github.com/quinnj/JSON3.jl). This package supports:
 
 - (de)serialization of Julia values to/from MessagePack (see `pack` and `unpack`)
