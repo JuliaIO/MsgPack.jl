@@ -372,7 +372,7 @@ julia> struct Point{T}
 
 julia> val = [Point(rand(), rand()) for _ in 1:100];
 
-julia> bytes = MsgPack.pack(MsgPack.extserialize(123, x));
+julia> bytes = MsgPack.pack(MsgPack.extserialize(123, val));
 
 julia> type, new_val = MsgPack.extdeserialize(MsgPack.unpack(bytes));
 
