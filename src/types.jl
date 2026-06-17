@@ -13,6 +13,7 @@ The subtypes of `AbstractMsgPackType` are:
 - [`NilType`](@ref)
 - [`BooleanType`](@ref)
 - [`FloatType`](@ref)
+- [`ComplexFType`](@ref)
 - [`StringType`](@ref)
 - [`BinaryType`](@ref)
 - [`ArrayType`](@ref)
@@ -87,6 +88,24 @@ where `S` may be one of the following types:
 - `Float64`
 """
 struct FloatType <: AbstractMsgPackType end
+
+"""
+    CFloatType <: AbstractMsgPackType
+
+A Julia type corresponding to the MessagePack Complex Float (extension) type.
+
+If `msgpack_type(T)` is defined to return `CFloatType()`, then `T` must support:
+
+- `to_msgpack(::CFloatType, ::T)::S`
+- `from_msgpack(::Type{T}, ::S)::T`
+- standard numeric comparators (`>`, `<`, `==`, etc.) against values of type `S`
+
+where `S` may be one of the following types:
+
+- `CFloat32`
+- `CFloat64`
+"""
+struct ComplexFType <: AbstractMsgPackType end
 
 """
     StringType <: AbstractMsgPackType
@@ -287,6 +306,10 @@ msgpack_type(::Type{Bool}) = BooleanType()
 # float-y things
 
 msgpack_type(::Type{<:AbstractFloat}) = FloatType()
+
+# Cfloat-y things
+
+msgpack_type(::Type{<:Complex{T}}) where T = ComplexFType()
 
 # string-y things
 
