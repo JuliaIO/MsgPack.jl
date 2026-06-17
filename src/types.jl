@@ -20,6 +20,7 @@ The subtypes of `AbstractMsgPackType` are:
 - [`ExtensionType`](@ref)
 - [`AnyType`](@ref)
 - [`StructType`](@ref)
+- [`ArrayStructType`](@ref)
 """
 abstract type AbstractMsgPackType end
 
@@ -191,6 +192,9 @@ struct StructType <: AbstractMsgPackType end
 
 @deprecate MutableStructType() StructType() false
 @deprecate ImmutableStructType() StructType() false
+
+# FIXME docs
+struct ArrayStructType <: AbstractMsgPackType end
 
 #####
 ##### `msgpack_type`, `to_msgpack`, `from_msgpack` defaults
