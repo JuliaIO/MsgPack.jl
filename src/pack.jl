@@ -1,5 +1,31 @@
 const Primitive = Union{Base.BitInteger, Base.IEEEFloat}
 
+@static if VERSION >= v"1.12"
+    @inline iobuffer_offset(io::IOBuffer) = max(0, io.offset_or_compacted)
+elseif VERSION >= v"1.11"
+    @inline iobuffer_offset(io::IOBuffer) = io.offset
+else
+    @inline iobuffer_offset(::IOBuffer) = 0
+end
+
+@static if v"1.11" <= VERSION < v"1.12"
+    function ensure_write_room!(io::IOBuffer, n::Int)
+        Base.ensureroom(io, UInt(n))
+        # Julia 1.11 can overestimate the capacity of shifted Memory storage.
+        # Normalize its offset before retrying growth on this cold path.
+        if io.offset != 0
+            Base._resize!(io, io.size - io.offset)
+            Base.ensureroom(io, UInt(n))
+        end
+        return nothing
+    end
+else
+    function ensure_write_room!(io::IOBuffer, n::Int)
+        Base.ensureroom(io, UInt(n))
+        return nothing
+    end
+end
+
 # Write `x` as big-endian raw bytes to `io`. The IOBuffer fast path bypasses the
 # `Base.RefValue{T}` allocation that `write(io::IO, x::Real)` incurs in Julia
 # stdlib: that call chain (`write` -> `write(io, Ref(x), n)` -> `unsafe_write`)
@@ -10,23 +36,9 @@ const Primitive = Union{Base.BitInteger, Base.IEEEFloat}
 # behavior for non-buffer streams, which aren't on MsgPack's hot path.
 @noinline function write_be_slow(io::IOBuffer, x::T) where {T<:Primitive}
     n = sizeof(T)
-    Base.ensureroom(io, UInt(n))
-    @static if v"1.11" <= VERSION < v"1.12"
-        # Julia 1.11 can overestimate the capacity of shifted Memory storage.
-        # Normalize its offset before retrying growth on this cold path.
-        if io.offset != 0
-            Base._resize!(io, io.size - io.offset)
-            Base.ensureroom(io, UInt(n))
-        end
-    end
+    ensure_write_room!(io, n)
     p = io.append ? io.size + 1 : io.ptr
-    offset = @static if VERSION >= v"1.12"
-        max(0, io.offset_or_compacted)
-    elseif VERSION >= v"1.11"
-        io.offset
-    else
-        0
-    end
+    offset = iobuffer_offset(io)
     # ensureroom can leave less than n writable bytes when maxsize is reached.
     # Check both physical storage and the logical limit, including Memory offsets.
     nw = min(n, max(0, min(length(io.data) - p + 1, io.maxsize - (p - 1 - offset))))
@@ -48,13 +60,7 @@ end
     size = io.size
     p = append ? size + 1 : io.ptr
     data = io.data
-    offset = @static if VERSION >= v"1.12"
-        max(0, io.offset_or_compacted)
-    elseif VERSION >= v"1.11"
-        io.offset
-    else
-        0
-    end
+    offset = iobuffer_offset(io)
     # Fuse ensureroom's available-space check with the full-width write. Growth,
     # compaction, reinitialization and partial writes stay on the cold path.
     available = min(length(data) - p + 1, io.maxsize - (p - 1 - offset))
