@@ -401,14 +401,11 @@ let io = IOBuffer()
 end
 
 # invalid_pack reports types (not the value) in its message
-struct NotPackable end
-MsgPack.msgpack_type(::Type{NotPackable}) = MsgPack.BooleanType()
-MsgPack.to_msgpack(::MsgPack.BooleanType, x::NotPackable) = x
-Base.:(==)(::NotPackable, ::Bool) = false
-let err = try; pack(NotPackable()); nothing; catch e; e; end
+let err = try; pack(typemax(UInt128)); nothing; catch e; e; end
     @test err isa ErrorException
-    @test occursin("cannot serialize Julia value with type NotPackable as MsgPack type", err.msg)
-    @test occursin("BooleanType", err.msg)
+    @test occursin("UInt128", err.msg)
+    @test occursin("IntegerType", err.msg)
+    @test !occursin(string(typemax(UInt128)), err.msg)
 end
 
 using Aqua
