@@ -400,5 +400,13 @@ let io = IOBuffer()
     @test unpack(take!(io), BarDefaults) == BarDefaults(10, 2)
 end
 
+# invalid_pack reports types (not the value) in its message
+let err = try; pack(typemax(UInt128)); nothing; catch e; e; end
+    @test err isa ErrorException
+    @test occursin("UInt128", err.msg)
+    @test occursin("IntegerType", err.msg)
+    @test !occursin(string(typemax(UInt128)), err.msg)
+end
+
 using Aqua
 Aqua.test_all(MsgPack; ambiguities=false)
