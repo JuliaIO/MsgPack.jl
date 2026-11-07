@@ -400,5 +400,16 @@ let io = IOBuffer()
     @test unpack(take!(io), BarDefaults) == BarDefaults(10, 2)
 end
 
+# invalid_pack reports types (not the value) in its message
+struct NotPackable end
+MsgPack.msgpack_type(::Type{NotPackable}) = MsgPack.BooleanType()
+MsgPack.to_msgpack(::MsgPack.BooleanType, x::NotPackable) = x
+Base.:(==)(::NotPackable, ::Bool) = false
+let err = try; pack(NotPackable()); nothing; catch e; e; end
+    @test err isa ErrorException
+    @test occursin("cannot serialize Julia value with type NotPackable as MsgPack type", err.msg)
+    @test occursin("BooleanType", err.msg)
+end
+
 using Aqua
 Aqua.test_all(MsgPack; ambiguities=false)

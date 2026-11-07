@@ -394,5 +394,5 @@ end
 #####
 
 @noinline function invalid_pack(io, t, x)
-    error("cannot serialize Julia value $(x) with type $(typeof(x)) as MsgPack type $(t) to $(io)")
+    error("cannot serialize Julia value with type $(typeof(x)) as MsgPack type $(t) to $(typeof(io))")
 end
