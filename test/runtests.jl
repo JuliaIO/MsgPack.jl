@@ -1,5 +1,7 @@
 using Test, MsgPack, Serialization
 
+include("iobuffer.jl")
+
 function can_round_trip(value, T,
                         expected_typed_output = value,
                         expected_any_output = value)
