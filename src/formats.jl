@@ -72,6 +72,16 @@ Base.@pure magic_byte(::Type{Float32Format}) = 0xca
 Base.@pure magic_byte(::Type{Float64Format}) = 0xcb
 
 #####
+##### `Cfloat` family (unsupported by the conventional MsgPack spec)
+#####
+
+struct ComplexF32Format <: AbstractMsgPackFormat end
+struct ComplexF64Format <: AbstractMsgPackFormat end
+
+Base.@pure magic_byte(::Type{ComplexF32Format}) = 0x28
+Base.@pure magic_byte(::Type{ComplexF64Format}) = 0x29
+
+#####
 ##### `str` family
 #####
 
